@@ -21,6 +21,7 @@ AthCyl es una aplicación multiplataforma diseñada para facilitar la gestión y
 - **Django Extensions**: Proporciona herramientas adicionales para el desarrollo.
 - **Django SSL Server**: Permite ejecutar el servidor de desarrollo con HTTPS.
 - **Werkzeug**: Proporciona herramientas de depuración y servidor mejorado.
+- **Unittest**: Framework de pruebas para integración y unidades.
 
 ### Frontend (Optimizado para dispositivos móviles)
 - **React Native con Expo**: Framework multiplataforma para desarrollo de aplicaciones móviles.
@@ -31,6 +32,7 @@ AthCyl es una aplicación multiplataforma diseñada para facilitar la gestión y
 - **Expo Location**: Acceso a GPS para seguimiento preciso de rutas.
 - **Expo Secure Store**: Almacenamiento seguro de credenciales de usuario.
 - **Expo File System**: Manejo eficiente de archivos GPX/TCX.
+- **Jest y Testing Library**: Framework de pruebas para componentes, servicios y pantallas.
 
 ### Seguridad
 - **HTTPS**: Comunicación segura entre cliente y servidor.
@@ -266,6 +268,59 @@ AthCyl/
    - Carga de archivos GPX/TCX
    - Visualización de estadísticas
    - Configuración de objetivos
+
+## Pruebas
+
+AthCyl incluye un conjunto completo de pruebas tanto para el backend como para el frontend, asegurando la calidad y estabilidad del código.
+
+### Pruebas de Backend
+
+Las pruebas de integración del backend verifican el funcionamiento correcto de la API REST:
+
+```bash
+cd backend
+python tests/integration_tests.py
+```
+
+Estas pruebas cubren:
+- Autenticación de usuarios
+- Operaciones CRUD para entrenamientos
+- Operaciones CRUD para objetivos
+- Actualización de perfil de usuario
+- Estadísticas de usuario
+
+### Pruebas de Frontend
+
+El frontend utiliza Jest y React Testing Library para probar componentes, servicios y pantallas:
+
+```bash
+cd frontend
+npm test
+```
+
+Para ver la cobertura de código:
+
+```bash
+npm run test:coverage
+```
+
+Las pruebas del frontend cubren:
+
+1. **Pruebas de autenticación**:
+   - Pantalla de inicio de sesión
+   - Contexto de autenticación
+
+2. **Pruebas de servicios**:
+   - Llamadas a la API
+   - Servicios de geolocalización
+   - Almacenamiento seguro
+
+3. **Pruebas de componentes**:
+   - Tarjetas de entrenamiento
+   - Sistema de notificaciones
+
+4. **Pruebas de pantallas**:
+   - Pantalla de seguimiento de entrenamiento
 
 ## Contribución
 

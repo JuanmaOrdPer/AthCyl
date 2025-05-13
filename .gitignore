@@ -41,6 +41,13 @@ npm-debug.*
 web-build/
 web-report/
 
+# Testing
+coverage/
+.jest/
+__mocks__/
+__snapshots__/
+*.snap
+
 # Logs
 logs
 *.log
