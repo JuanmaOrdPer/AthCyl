@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -92,13 +93,25 @@ const MainNavigator = () => {
   );
 };
 
+// Componente de carga
+const LoadingScreen = () => {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <ActivityIndicator size="large" color="#0000ff" />
+      <Text style={{ marginTop: 10 }}>Cargando...</Text>
+    </View>
+  );
+};
+
 // Navegador principal que decide entre Auth y Main según el estado de autenticación
 const AppNavigator = () => {
   const { user, loading } = useContext(AuthContext);
   
-  // Si está cargando, podríamos mostrar una pantalla de splash o un spinner
+  console.log('Estado de autenticación - Usuario:', user ? 'Autenticado' : 'No autenticado', 'Cargando:', loading);
+  
+  // Si está cargando, mostramos un spinner
   if (loading) {
-    return null; // O un componente de carga
+    return <LoadingScreen />;
   }
   
   return (

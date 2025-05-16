@@ -37,11 +37,15 @@ const HomeScreen = ({ navigation }) => {
       
       // Cargar objetivos activos
       const goalsResponse = await api.get('/api/trainings/goals/active/');
-      setGoals(goalsResponse.data || []);
+      // Asegurarse de que goals sea siempre un array
+      const goalsData = Array.isArray(goalsResponse?.data) ? goalsResponse.data : [];
+      setGoals(goalsData);
       
       // Cargar logros recientes
       const achievementsResponse = await api.get('/api/stats/achievements/recent/?limit=3');
-      setAchievements(achievementsResponse.data || []);
+      // Asegurarse de que achievements sea siempre un array
+      const achievementsData = Array.isArray(achievementsResponse?.data) ? achievementsResponse.data : [];
+      setAchievements(achievementsData);
       
       // Cargar resumen de actividad semanal
       const summaryResponse = await api.get('/api/stats/user-stats/weekly_summary/');
@@ -92,12 +96,12 @@ const HomeScreen = ({ navigation }) => {
         <ActivitySummary 
           data={activitySummary} 
           period="week" 
-          goals={goals.reduce((acc, goal) => {
-            if (goal.goal_type) {
+          goals={Array.isArray(goals) ? goals.reduce((acc, goal) => {
+            if (goal && goal.goal_type) {
               acc[goal.goal_type] = goal;
             }
             return acc;
-          }, {})} 
+          }, {}) : {}} 
         />
       )}
       
@@ -173,7 +177,7 @@ const HomeScreen = ({ navigation }) => {
       <Card style={styles.card}>
         <Card.Title title="Logros Recientes" />
         <Card.Content>
-          {achievements.length > 0 ? (
+          {Array.isArray(achievements) && achievements.length > 0 ? (
             achievements.map((achievement) => (
               <AchievementCard
                 key={achievement.id}

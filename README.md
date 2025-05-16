@@ -4,24 +4,89 @@ AthCyl es una aplicación multiplataforma diseñada para facilitar la gestión y
 
 ## Características Principales
 
-- **Registro e inicio de sesión seguro** utilizando PostgreSQL y autenticación básica
-- **Comunicación segura mediante HTTPS** para proteger los datos de los usuarios
-- **Subida de entrenamientos** manualmente o mediante archivos GPX/TCX
-- **Visualización de estadísticas y métricas personalizadas** con gráficos interactivos
-- **Visualización de rutas en mapas** para analizar los recorridos de entrenamiento
-- **Exportación de datos** en formato PDF o CSV para análisis externo
-- **Configuración de objetivos personalizados** y seguimiento del progreso
-- **Sistema de logros y medallas** para motivar a los usuarios
+- **Autenticación segura** por correo electrónico con JWT (JSON Web Tokens)
+- **Registro e inicio de sesión** con tokens de acceso y actualización
+- **Gestión de perfil de usuario** con información personal y preferencias
+- **Registro de entrenamientos** manual o mediante archivos GPX/TCX
+- **Seguimiento de métricas** como distancia, duración, ritmo y elevación
+- **Visualización de rutas** en mapas interactivos
+- **Estadísticas detalladas** con gráficos para analizar el rendimiento
+- **Interfaz intuitiva** diseñada para móviles con React Native
+- **Almacenamiento seguro** de credenciales y datos sensibles
+
+## Características Técnicas
+
+### Autenticación y Seguridad
+- Autenticación por correo electrónico (no se utiliza nombre de usuario)
+- Tokens JWT para autenticación sin estado
+- Renovación automática de tokens de acceso
+- Almacenamiento seguro de tokens en el dispositivo
+- Comunicación segura mediante HTTPS
+- Protección contra CSRF y XSS
+
+### Gestión de Entrenamientos
+- Registro manual de entrenamientos
+- Importación desde archivos GPX/TCX
+- Cálculo automático de métricas (distancia, ritmo, elevación, etc.)
+- Clasificación de entrenamientos por tipo (carrera, ciclismo, natación, etc.)
+- Búsqueda y filtrado de entrenamientos
+
+### Análisis y Visualización
+- Gráficos interactivos de rendimiento
+- Mapa con rutas trazadas
+- Estadísticas de progreso a lo largo del tiempo
+- Comparación de entrenamientos
+- Exportación de datos en múltiples formatos
 
 ## Tecnologías Utilizadas
 
 ### Backend
-- **Python con Django REST Framework**: Crea una API sólida, escalable y segura.
-- **PostgreSQL**: Base de datos relacional robusta para almacenamiento persistente.
-- **Django Extensions**: Proporciona herramientas adicionales para el desarrollo.
-- **Django SSL Server**: Permite ejecutar el servidor de desarrollo con HTTPS.
-- **Werkzeug**: Proporciona herramientas de depuración y servidor mejorado.
-- **Unittest**: Framework de pruebas para integración y unidades.
+- **Python 3.8+**: Lenguaje de programación principal
+- **Django 4.2.7**: Framework web de alto nivel
+- **Django REST Framework 3.16.0**: Para construir la API RESTful
+- **Django REST Framework JWT**: Para autenticación con tokens JWT
+- **PostgreSQL 12+**: Base de datos relacional
+- **Django Extensions**: Utilidades adicionales para desarrollo
+- **Django SSL Server**: Para ejecutar con HTTPS en desarrollo
+- **Gunicorn**: Servidor WSGI para producción
+- **WhiteNoise**: Para servir archivos estáticos
+- **psycopg2-binary**: Adaptador PostgreSQL para Python
+- **bcrypt**: Para el hash seguro de contraseñas
+- **gpxpy**: Para procesar archivos GPX
+- **pandas**: Para análisis de datos
+- **python-dateutil**: Utilidades para manejo de fechas
+- **Pillow**: Para procesamiento de imágenes
+
+### Frontend (React Native con Expo)
+- **React Native 0.72.10**: Framework para aplicaciones móviles
+- **Expo 49.0.8**: Plataforma para desarrollo móvil
+- **React Navigation 6.1.7**: Navegación entre pantallas
+- **Axios 1.4.0**: Cliente HTTP para la API
+- **React Native Maps 1.7.1**: Visualización de mapas y rutas
+- **React Native Chart Kit 6.12.0**: Gráficos interactivos
+- **React Native Vector Icons 10.0.0**: Iconos para la interfaz
+- **Expo Secure Store**: Almacenamiento seguro de tokens
+- **Expo File System**: Manejo de archivos locales
+- **React Native Reanimated 3.3.0**: Animaciones fluidas
+- **Lottie React Native 5.1.6**: Animaciones avanzadas
+
+### Desarrollo
+- **ESLint**: Análisis de código estático
+- **Prettier**: Formateo de código
+- **Jest**: Framework de pruebas
+- **Testing Library**: Pruebas de componentes
+- **Git**: Control de versiones
+- **GitHub**: Alojamiento de código
+- **Docker**: Contenedorización
+- **Postman**: Pruebas de API
+
+### Producción
+- **Nginx**: Servidor web y proxy inverso
+- **Gunicorn**: Servidor WSGI
+- **PostgreSQL**: Base de datos
+- **Redis**: Caché y cola de tareas
+- **Let's Encrypt**: Certificados SSL
+- **GitHub Actions**: CI/CD
 
 ### Frontend (Optimizado para dispositivos móviles)
 - **React Native con Expo**: Framework multiplataforma para desarrollo de aplicaciones móviles.
@@ -50,86 +115,337 @@ AthCyl es una aplicación multiplataforma diseñada para facilitar la gestión y
 
 ```
 AthCyl/
-├── backend/                    # Django REST Framework
-│   ├── athcyl/                 # Proyecto principal
+├── backend/                    # Backend Django
+│   ├── athcyl/                 # Configuración principal del proyecto
+│   │   ├── __init__.py
 │   │   ├── settings.py         # Configuración del proyecto
-│   │   ├── urls.py             # Configuración de rutas
-│   │   └── views.py            # Vistas principales
-│   ├── users/                  # App para gestión de usuarios
-│   │   ├── models.py           # Modelos de usuario
-│   │   ├── serializers.py      # Serializadores para API
-│   │   ├── views.py            # Vistas de la API
-│   │   └── urls.py             # Rutas de la API
-│   ├── trainings/              # App para gestión de entrenamientos
-│   │   ├── models.py           # Modelos de entrenamiento
-│   │   ├── serializers.py      # Serializadores para API
-│   │   ├── views.py            # Vistas de la API
-│   │   └── urls.py             # Rutas de la API
-│   ├── stats/                  # App para estadísticas
-│   │   ├── models.py           # Modelos de estadísticas
-│   │   ├── serializers.py      # Serializadores para API
-│   │   ├── views.py            # Vistas de la API
-│   │   └── urls.py             # Rutas de la API
-│   ├── run_https_server.py     # Script para ejecutar servidor HTTPS
-│   ├── create_superuser.py     # Script para crear superusuarios
-│   └── manage.py              # Script de administración de Django
-├── frontend/                   # React Native con Expo
-│   ├── src/                    # Código fuente principal
-│   │   ├── components/          # Componentes reutilizables
-│   │   │   ├── TrainingMap/       # Componente para visualizar rutas
-│   │   │   ├── TrainingChart/     # Componente para gráficos
-│   │   │   ├── TrainingStats/     # Componente para estadísticas
-│   │   │   ├── TrainingCard/      # Componente para mostrar entrenamientos
-│   │   │   ├── TrainingForm/      # Formulario de entrenamientos
-│   │   │   ├── GoalCard/          # Componente para mostrar objetivos
-│   │   │   ├── GoalForm/          # Formulario de objetivos
-│   │   │   ├── ActivitySummary/   # Resumen de actividad
-│   │   │   ├── AchievementCard/   # Componente para logros
-│   │   │   └── NotificationBanner/ # Componente para notificaciones
-│   │   ├── screens/             # Pantallas de la aplicación
-│   │   │   ├── auth/              # Pantallas de autenticación
-│   │   │   │   ├── LoginScreen.js    # Pantalla de inicio de sesión
-│   │   │   │   └── RegisterScreen.js # Pantalla de registro
-│   │   │   └── main/              # Pantallas principales
-│   │   │       ├── HomeScreen.js      # Pantalla de inicio
-│   │   │       ├── TrainingDetailScreen.js # Detalle de entrenamiento
-│   │   │       ├── AddTrainingScreen.js # Añadir entrenamiento
-│   │   │       ├── GoalsScreen.js     # Pantalla de objetivos
-│   │   │       ├── ProfileScreen.js   # Pantalla de perfil
-│   │   │       └── AchievementsScreen.js # Pantalla de logros
-│   │   ├── contexts/            # Contextos de React
-│   │   │   ├── AuthContext.js      # Contexto de autenticación
-│   │   │   └── NotificationContext.js # Contexto de notificaciones
-│   │   ├── services/            # Servicios para API
-│   │   │   └── api.js             # Configuración de Axios para API
-│   │   ├── navigation/          # Configuración de navegación
-│   │   │   └── AppNavigator.js    # Navegador principal
-│   │   └── utils/               # Utilidades
-│   │       └── helpers.js         # Funciones auxiliares
-│   ├── assets/                 # Imágenes y recursos estáticos
-│   ├── App.js                  # Punto de entrada de la aplicación
-│   ├── package.json            # Dependencias y scripts
-│   └── webpack.config.js        # Configuración para versión web
+│   │   ├── urls.py             # Rutas principales de la API
+│   │   ├── asgi.py             # Configuración ASGI
+│   │   └── wsgi.py             # Configuración WSGI
+│   │
+│   ├── users/                  # App de usuarios
+│   │   ├── __init__.py
+│   │   ├── admin.py           # Configuración del admin
+│   │   ├── apps.py            # Configuración de la app
+│   │   ├── models.py          # Modelos de usuario
+│   │   ├── serializers.py     # Serializadores para la API
+│   │   ├── urls.py            # Rutas de la API de usuarios
+│   │   └── views.py           # Vistas de la API de usuarios
+│   │
+│   ├── trainings/           # App de entrenamientos
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py          # Modelos de entrenamientos
+│   │   ├── serializers.py     # Serializadores para la API
+│   │   ├── urls.py            # Rutas de la API de entrenamientos
+│   │   ├── views.py           # Vistas de la API de entrenamientos
+│   │   └── parsers.py         # Parsers para archivos GPX/TCX
+│   │
+│   ├── stats/               # App de estadísticas
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py          # Modelos de estadísticas
+│   │   ├── serializers.py     # Serializadores para estadísticas
+│   │   ├── urls.py            # Rutas de la API de estadísticas
+│   │   └── views.py           # Vistas de la API de estadísticas
+│   │
+│   ├── manage.py           # Script de administración
+│   ├── requirements.txt       # Dependencias de Python
+│   └── .env.example          # Variables de entorno de ejemplo
+├── frontend/                   # Frontend React Native
+│   ├── src/
+│   │   ├── assets/            # Recursos estáticos (imágenes, fuentes, etc.)
+│   │   │   ├── fonts/          # Fuentes personalizadas
+│   │   │   ├── icons/           # Iconos de la aplicación
+│   │   │   └── images/          # Imágenes de la aplicación
+│   │   │
+│   │   ├── components/       # Componentes reutilizables
+│   │   │   ├── common/          # Componentes comunes (botones, inputs, etc.)
+│   │   │   │   ├── Button.js
+│   │   │   │   ├── Input.js
+│   │   │   │   └── ...
+│   │   │   │
+│   │   │   ├── TrainingMap/     # Mapa para visualizar rutas
+│   │   │   ├── TrainingChart/   # Gráficos de rendimiento
+│   │   │   ├── TrainingCard/    # Tarjeta de entrenamiento
+│   │   │   ├── StatsCard/      # Tarjeta de estadísticas
+│   │   │   └── ...
+│   │   │
+│   │   ├── constants/        # Constantes de la aplicación
+│   │   │   ├── theme.js        # Estilos y temas
+│   │   │   └── config.js       # Configuración general
+│   │   │
+│   │   ├── contexts/        # Contextos de React
+│   │   │   ├── AuthContext.js  # Autenticación
+│   │   │   └── ThemeContext.js # Tema de la aplicación
+│   │   │
+│   │   ├── hooks/           # Custom Hooks
+│   │   │   ├── useAuth.js      # Hook para autenticación
+│   │   │   └── useTheme.js     # Hook para tema
+│   │   │
+│   │   ├── navigation/      # Navegación
+│   │   │   ├── AppNavigator.js # Navegador principal
+│   │   │   ├── AuthNavigator.js # Navegador de autenticación
+│   │   │   └── MainNavigator.js # Navegador principal
+│   │   │
+│   │   ├── screens/         # Pantallas de la aplicación
+│   │   │   ├── auth/            # Pantallas de autenticación
+│   │   │   │   ├── LoginScreen.js
+│   │   │   │   ├── RegisterScreen.js
+│   │   │   │   └── ForgotPasswordScreen.js
+│   │   │   │
+│   │   │   └── main/          # Pantallas principales
+│   │   │       ├── HomeScreen.js
+│   │   │       ├── TrainingListScreen.js
+│   │   │       ├── TrainingDetailScreen.js
+│   │   │       ├── AddTrainingScreen.js
+│   │   │       ├── StatsScreen.js
+│   │   │       ├── ProfileScreen.js
+│   │   │       └── SettingsScreen.js
+│   │   │
+│   │   ├── services/        # Servicios
+│   │   │   ├── api.js          # Cliente de API
+│   │   │   ├── auth.js         # Servicio de autenticación
+│   │   │   ├── training.js     # Servicio de entrenamientos
+│   │   │   └── storage.js      # Almacenamiento local
+│   │   │
+│   │   ├── store/          # Estado global (si se usa Redux)
+│   │   │   ├── actions/
+│   │   │   ├── reducers/
+│   │   │   └── store.js
+│   │   │
+│   │   └── utils/          # Utilidades
+│   │       ├── formatters.js   # Funciones de formateo
+│   │       ├── validators.js   # Validaciones
+│   │       └── helpers.js      # Funciones de ayuda
+│   │
+│   ├── App.js              # Punto de entrada de la aplicación
+│   ├── app.json              # Configuración de Expo
+│   ├── babel.config.js       # Configuración de Babel
+│   ├── package.json          # Dependencias y scripts
+│   └── ...
+│
+├── .gitignore             # Archivos ignorados por Git
+├── .env.example             # Variables de entorno de ejemplo
+├── docker-compose.yml       # Configuración de Docker Compose
+├── Dockerfile               # Configuración de Docker
+└── README.md               # Este archivo
 ├── setup_db.py                # Script para configurar la base de datos
 ├── create_db_user.py           # Script para crear usuario de base de datos
 ├── .env                        # Variables de entorno
 └── README.md                   # Documentación del proyecto
 ```
 
-## Requisitos
+## Requisitos del Sistema
 
 ### Backend
-- Python 3.8+
-- PostgreSQL 12+
-- Dependencias de Python (ver `requirements.txt`):
-  - Django 4.2.7 y Django REST Framework
-  - django-sslserver y django-extensions para soporte HTTPS
-  - Werkzeug y pyOpenSSL para certificados SSL
-  - psycopg2-binary para conexión a PostgreSQL
-  - gpxpy para procesamiento de archivos GPX
-  - pandas para análisis de datos
-  - bcrypt para cifrado de contraseñas
-  - reportlab, python-pptx y openpyxl para exportación de datos
+- Python 3.8 o superior
+- PostgreSQL 12 o superior
+- pip (gestor de paquetes de Python)
+- virtualenv (recomendado)
+
+### Frontend
+- Node.js 16.x o superior
+- npm 8.x o superior (o yarn)
+- Expo CLI (`npm install -g expo-cli`)
+- Android Studio / Xcode (para desarrollo móvil nativo)
+
+### Desarrollo
+- Git
+- Docker y Docker Compose (opcional, para desarrollo con contenedores)
+- Postman o similar (para probar la API)
+
+## Configuración del Entorno de Desarrollo
+
+### Backend
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/tu-usuario/athcyl.git
+   cd athcyl/backend
+   ```
+
+2. **Configurar entorno virtual**
+   ```bash
+   # Linux/macOS
+   python3 -m venv venv
+   source venv/bin/activate
+   
+   # Windows
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+
+3. **Instalar dependencias**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configurar variables de entorno**
+   Copiar el archivo `.env.example` a `.env` y configurar las variables necesarias:
+   ```bash
+   cp .env.example .env
+   # Editar el archivo .env con tus configuraciones
+   ```
+
+5. **Configurar la base de datos**
+   Asegúrate de tener PostgreSQL instalado y crear una base de datos vacía.
+   Luego, ejecuta las migraciones:
+   ```bash
+   python manage.py migrate
+   ```
+
+6. **Crear superusuario**
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+7. **Iniciar el servidor de desarrollo**
+   ```bash
+   python manage.py runserver
+   ```
+   O con HTTPS para desarrollo:
+   ```bash
+   python manage.py runsslserver
+   ```
+
+### Frontend
+
+1. **Instalar dependencias**
+   ```bash
+   cd ../frontend
+   npm install
+   # o si usas yarn
+   yarn install
+   ```
+
+2. **Configurar variables de entorno**
+   Copiar el archivo `.env.example` a `.env` y configurar las variables necesarias:
+   ```bash
+   cp .env.example .env
+   # Editar el archivo .env con tus configuraciones
+   ```
+
+3. **Iniciar la aplicación**
+   ```bash
+   # Para Android
+   npm run android
+   
+   # Para iOS
+   npm run ios
+   
+   # Para web
+   npm run web
+   ```
+
+## Despliegue
+
+### Backend (Producción)
+
+1. **Configuración de producción**
+   - Asegúrate de que `DEBUG=False` en producción
+   - Configura `ALLOWED_HOSTS` con tu dominio
+   - Configura `DATABASES` para usar tu base de datos de producción
+   - Configura `STATIC_ROOT` y `MEDIA_ROOT`
+
+2. **Recopilar archivos estáticos**
+   ```bash
+   python manage.py collectstatic --noinput
+   ```
+
+3. **Usar un servidor WSGI**
+   Configura Gunicorn o uWSGI con Nginx como proxy inverso.
+
+### Frontend (Producción)
+
+1. **Construir para producción**
+   ```bash
+   expo build:web
+   ```
+
+2. **Desplegar la web**
+   Los archivos generados estarán en `web-build/` y pueden ser servidos por cualquier servidor web estático.
+
+## Estructura de la API
+
+La API sigue el estándar RESTful y utiliza autenticación JWT. A continuación se detallan los endpoints principales:
+
+### Autenticación
+
+- `POST /api/auth/register/` - Registrar un nuevo usuario
+- `POST /api/auth/login/` - Iniciar sesión (obtener tokens)
+- `POST /api/auth/refresh/` - Renovar token de acceso
+- `POST /api/auth/logout/` - Cerrar sesión (invalidar token)
+
+### Usuarios
+
+- `GET /api/users/me/` - Obtener perfil del usuario actual
+- `PUT /api/users/me/` - Actualizar perfil del usuario actual
+- `PATCH /api/users/me/` - Actualizar parcialmente el perfil
+
+### Entrenamientos
+
+- `GET /api/trainings/` - Listar entrenamientos
+- `POST /api/trainings/` - Crear un nuevo entrenamiento
+- `GET /api/trainings/{id}/` - Obtener detalles de un entrenamiento
+- `PUT /api/trainings/{id}/` - Actualizar un entrenamiento
+- `DELETE /api/trainings/{id}/` - Eliminar un entrenamiento
+- `POST /api/trainings/import/` - Importar entrenamiento desde archivo GPX/TCX
+
+### Estadísticas
+
+- `GET /api/stats/` - Obtener estadísticas generales
+- `GET /api/stats/weekly/` - Estadísticas semanales
+- `GET /api/stats/monthly/` - Estadísticas mensuales
+- `GET /api/stats/yearly/` - Estadísticas anuales
+
+## Autenticación
+
+La autenticación se realiza mediante JWT (JSON Web Tokens). El flujo es el siguiente:
+
+1. El usuario inicia sesión con su email y contraseña
+2. El servidor responde con un token de acceso y un token de actualización
+3. El cliente debe incluir el token de acceso en el encabezado `Authorization: Bearer <token>`
+4. Cuando el token de acceso expira, el cliente puede usar el token de actualización para obtener uno nuevo
+
+### Ejemplo de autenticación
+
+```http
+POST /api/auth/login/
+Content-Type: application/json
+
+{
+  "email": "usuario@ejemplo.com",
+  "password": "contraseña123"
+}
+```
+
+Respuesta exitosa:
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+## Contribución
+
+1. Haz un fork del proyecto
+2. Crea una rama para tu característica (`git checkout -b feature/nueva-caracteristica`)
+3. Realiza tus cambios y haz commit (`git commit -am 'Añadir nueva característica'`)
+4. Haz push a la rama (`git push origin feature/nueva-caracteristica`)
+5. Abre un Pull Request
+
+## Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## Contacto
+
+Si tienes alguna pregunta o sugerencia, no dudes en abrir un issue o contactar al equipo de desarrollo.
 
 ### Frontend
 - Node.js 14+ y npm 6+

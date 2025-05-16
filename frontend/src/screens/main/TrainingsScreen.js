@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
 import { Card, Title, Paragraph, Text, FAB, Chip, ActivityIndicator, useTheme, Searchbar } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';

@@ -5,7 +5,7 @@ export default {
   orientation: 'portrait',
   icon: './assets/icon.png',
   splash: {
-    image: './assets/splash.png',
+    image: null,  // Deshabilitar temporalmente el splash screen
     resizeMode: 'contain',
     backgroundColor: '#ffffff'
   },
@@ -28,8 +28,9 @@ export default {
     package: 'com.juanma.athcyl'
   },
   extra: {
-    // Configuración para la API
-    apiUrl: 'https://127.0.0.1:8000',
+    // Configuración para la API - Usa tu IP local
+    // Ejemplo: 'http://192.168.1.100:8000' (sin HTTPS para desarrollo)
+    apiUrl: 'http://192.168.0.7:8000',
     // Usar autenticación básica en lugar de JWT
     useBasicAuth: true
   }

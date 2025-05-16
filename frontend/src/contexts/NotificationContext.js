@@ -61,6 +61,7 @@ export const NotificationProvider = ({ children }) => {
   return (
     <NotificationContext.Provider
       value={{
+        ...notification, // Expose the current notification state
         showNotification,
         hideNotification,
         showSuccess,
