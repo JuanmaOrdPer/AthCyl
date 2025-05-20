@@ -5,47 +5,68 @@ from .models import ActivitySummary
 import datetime
 
 @receiver(post_save, sender=Training)
-def update_activity_summaries(sender, instance, created, **kwargs):
-    """Actualizar resúmenes de actividad cuando se crea o modifica un entrenamiento"""
+def actualizar_resumenes_actividad(sender, instance, created, **kwargs):
+    """
+    Actualiza los resúmenes de actividad diaria cuando se guarda un entrenamiento.
+    Esto nos permite tener estadísticas agrupadas por días.
+    """
     try:
-        # Obtener fecha del entrenamiento
-        date = instance.date
+        # Obtenemos la fecha del entrenamiento
+        fecha = instance.date
         
-        # Actualizar resumen diario
-        daily_summary, _ = ActivitySummary.objects.get_or_create(
+        # Actualizamos el resumen diario (lo creamos si no existe)
+        resumen_diario, es_nuevo = ActivitySummary.objects.get_or_create(
             user=instance.user,
-            period_type='daily',
-            year=date.year,
-            month=date.month,
-            day=date.day,
+            period_type='daily',  # Tipo de período: diario
+            year=fecha.year,      # Año
+            month=fecha.month,    # Mes
+            day=fecha.day,        # Día
             defaults={
-                'start_date': date,
-                'end_date': date
+                'start_date': fecha,  # Fecha de inicio (la misma)
+                'end_date': fecha     # Fecha de fin (la misma)
             }
         )
         
-        # Obtener todos los entrenamientos del día
-        day_trainings = Training.objects.filter(
+        # Obtenemos todos los entrenamientos del día para este usuario
+        entrenamientos_dia = Training.objects.filter(
             user=instance.user,
-            date=date
+            date=fecha
         )
         
-        # Actualizar estadísticas del día
-        daily_summary.training_count = day_trainings.count()
-        daily_summary.total_distance = sum(t.distance or 0 for t in day_trainings)
-        daily_summary.total_calories = sum(t.calories or 0 for t in day_trainings)
+        # Calculamos los totales para este día
+        resumen_diario.training_count = entrenamientos_dia.count()
         
-        # Calcular duración total
-        total_duration_seconds = sum(
-            t.duration.total_seconds() for t in day_trainings if t.duration
-        )
-        daily_summary.total_duration = datetime.timedelta(seconds=total_duration_seconds)
+        # Sumamos las distancias (si hay alguna)
+        distancia_total = 0
+        for ent in entrenamientos_dia:
+            if ent.distance:
+                distancia_total += ent.distance
+        resumen_diario.total_distance = distancia_total
         
-        daily_summary.save()
+        # Sumamos las calorías (si hay alguna)
+        calorias_total = 0
+        for ent in entrenamientos_dia:
+            if ent.calories:
+                calorias_total += ent.calories
+        resumen_diario.total_calories = calorias_total
         
-        # También podríamos actualizar los resúmenes semanales, mensuales y anuales
-        # pero lo dejamos para que se haga a través de la API para evitar
-        # demasiadas actualizaciones en cada guardado de entrenamiento
+        # Calculamos la duración total
+        segundos_totales = 0
+        for ent in entrenamientos_dia:
+            if ent.duration:
+                segundos_totales += ent.duration.total_seconds()
+        
+        # Convertimos los segundos a objeto timedelta
+        resumen_diario.total_duration = datetime.timedelta(seconds=segundos_totales)
+        
+        # Guardamos los cambios
+        resumen_diario.save()
+        
+        if es_nuevo:
+            print(f"Se ha creado un nuevo resumen diario para la fecha {fecha}")
+        else:
+            print(f"Se ha actualizado el resumen diario para la fecha {fecha}")
         
     except Exception as e:
-        print(f"Error al actualizar resúmenes de actividad: {e}")
+        print(f"ERROR al actualizar los resúmenes de actividad: {e}")
+        # Aquí podríamos hacer alguna acción adicional como enviar una notificación

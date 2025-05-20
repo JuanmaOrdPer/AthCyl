@@ -1,10 +1,21 @@
+"""
+Vistas para estadísticas de entrenamiento.
+
+Este módulo define las vistas API para:
+- Obtener estadísticas globales de usuario
+- Gestionar resúmenes de actividad por períodos
+- Exportar estadísticas a diferentes formatos
+
+Autor: Juan Manuel Ordás Periscal
+Fecha: Mayo 2025
+"""
+
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum, Avg, Max, Count
 from django.db.models.functions import TruncMonth, TruncWeek, TruncDay
 import datetime
-import pandas as pd
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -17,451 +28,585 @@ from .serializers import UserStatsSerializer, ActivitySummarySerializer
 from trainings.models import Training
 
 class StatsViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para estadísticas de usuario.
+    
+    Proporciona acceso a las estadísticas generales del usuario
+    y métodos para actualizar, resumir y exportar esas estadísticas.
+    """
+    
     serializer_class = UserStatsSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        """Obtener estadísticas del usuario autenticado"""
-        user = self.request.user
-        stats, created = UserStats.objects.get_or_create(user=user)
+        """
+        Obtener estadísticas del usuario autenticado.
+        
+        Asegura que cada usuario sólo pueda ver sus propias estadísticas.
+        """
+        usuario = self.request.user
+        
+        # Obtener o crear objeto de estadísticas
+        estadisticas, creado = UserStats.objects.get_or_create(user=usuario)
         
         # Actualizar estadísticas si se solicita
-        if self.request.query_params.get('update', 'false').lower() == 'true':
-            stats.update_stats()
-        
-        return UserStats.objects.filter(user=user)
+        if self.request.query_params.get('actualizar', 'false').lower() == 'true':
+            estadisticas.update_stats()
+            
+        return UserStats.objects.filter(user=usuario)
     
     @action(detail=False, methods=['get'])
-    def summary(self, request):
-        """Obtener un resumen de las estadísticas del usuario"""
-        user = request.user
-        stats, created = UserStats.objects.get_or_create(user=user)
+    def resumen(self, request):
+        """
+        Obtener un resumen general de las estadísticas del usuario.
         
-        # Actualizar estadísticas
-        stats.update_stats()
+        Incluye estadísticas globales, actividad reciente y distribución por tipo.
+        """
+        usuario = request.user
+        estadisticas, creado = UserStats.objects.get_or_create(user=usuario)
         
-        # Obtener datos adicionales
-        today = datetime.date.today()
+        # Actualizar las estadísticas para asegurar que están al día
+        estadisticas.update_stats()
+        
+        # Calculamos datos adicionales
+        hoy = datetime.date.today()
         
         # Entrenamientos en el último mes
-        thirty_days_ago = today - datetime.timedelta(days=30)
-        trainings_last_month = Training.objects.filter(
-            user=user,
-            date__gte=thirty_days_ago
+        hace_30_dias = hoy - datetime.timedelta(days=30)
+        entrenamientos_ultimo_mes = Training.objects.filter(
+            user=usuario,
+            date__gte=hace_30_dias
         ).count()
         
         # Distancia en el último mes
-        distance_last_month = Training.objects.filter(
-            user=user,
-            date__gte=thirty_days_ago
+        distancia_ultimo_mes = Training.objects.filter(
+            user=usuario,
+            date__gte=hace_30_dias
         ).aggregate(total=Sum('distance'))['total'] or 0
         
-        # Entrenamientos por tipo de actividad
-        activity_counts = Training.objects.filter(
-            user=user
-        ).values('activity_type').annotate(count=Count('id')).order_by('-count')
+        # Distribución por tipo de actividad
+        tipos_actividad = Training.objects.filter(
+            user=usuario
+        ).values('activity_type').annotate(cantidad=Count('id')).order_by('-cantidad')
         
         # Construir respuesta
-        response_data = {
-            'stats': UserStatsSerializer(stats).data,
-            'recent_activity': {
-                'trainings_last_month': trainings_last_month,
-                'distance_last_month': distance_last_month,
+        datos_respuesta = {
+            'estadisticas': UserStatsSerializer(estadisticas).data,
+            'actividad_reciente': {
+                'entrenamientos_ultimo_mes': entrenamientos_ultimo_mes,
+                'distancia_ultimo_mes': distancia_ultimo_mes,
             },
-            'activity_distribution': {item['activity_type']: item['count'] for item in activity_counts}
+            'distribucion_por_tipo': {item['activity_type']: item['cantidad'] for item in tipos_actividad}
         }
         
-        return Response(response_data)
+        return Response(datos_respuesta)
     
     @action(detail=False, methods=['get'])
-    def activity_trends(self, request):
-        """Obtener tendencias de actividad por período (semanal, mensual, anual)"""
-        user = request.user
-        period = request.query_params.get('period', 'weekly')
+    def tendencias(self, request):
+        """
+        Obtener tendencias de actividad por período (semanal, mensual, anual).
         
-        if period not in ['weekly', 'monthly', 'yearly']:
+        Permite visualizar la evolución de la actividad deportiva a lo largo del tiempo.
+        Versión simplificada sin pandas.
+        """
+        usuario = request.user
+        periodo = request.query_params.get('periodo', 'semanal')
+        
+        # Validar el período
+        if periodo not in ['semanal', 'mensual', 'anual']:
             return Response(
-                {'error': 'Período no válido. Debe ser weekly, monthly o yearly.'},
+                {'error': 'Período no válido. Debe ser semanal, mensual o anual.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Obtener entrenamientos del usuario
-        trainings = Training.objects.filter(user=user)
+        # Obtener todos los entrenamientos del usuario
+        entrenamientos = Training.objects.filter(user=usuario)
         
-        if not trainings.exists():
-            return Response({'message': 'No hay entrenamientos registrados.'})
+        if not entrenamientos.exists():
+            return Response({'mensaje': 'No tienes entrenamientos registrados todavía.'})
         
-        # Preparar datos según el período
-        if period == 'weekly':
+        # Preparar datos según el período seleccionado
+        if periodo == 'semanal':
             # Agrupar por semana
-            data = trainings.annotate(
-                period=TruncWeek('date')
-            ).values('period').annotate(
-                count=Count('id'),
-                distance=Sum('distance'),
-                duration=Sum('duration'),
-                calories=Sum('calories')
-            ).order_by('period')
+            datos = entrenamientos.annotate(
+                periodo=TruncWeek('date')
+            ).values('periodo').annotate(
+                cantidad=Count('id'),
+                distancia=Sum('distance'),
+                duracion=Sum('duration'),
+                calorias=Sum('calories')
+            ).order_by('periodo')
+            etiqueta_periodo = 'Semana'
         
-        elif period == 'monthly':
+        elif periodo == 'mensual':
             # Agrupar por mes
-            data = trainings.annotate(
-                period=TruncMonth('date')
-            ).values('period').annotate(
-                count=Count('id'),
-                distance=Sum('distance'),
-                duration=Sum('duration'),
-                calories=Sum('calories')
-            ).order_by('period')
+            datos = entrenamientos.annotate(
+                periodo=TruncMonth('date')
+            ).values('periodo').annotate(
+                cantidad=Count('id'),
+                distancia=Sum('distance'),
+                duracion=Sum('duration'),
+                calorias=Sum('calories')
+            ).order_by('periodo')
+            etiqueta_periodo = 'Mes'
         
-        else:  # yearly
-            # Agrupar por año
-            data = trainings.values(
-                period=models.functions.ExtractYear('date')
-            ).annotate(
-                count=Count('id'),
-                distance=Sum('distance'),
-                duration=Sum('duration'),
-                calories=Sum('calories')
-            ).order_by('period')
+        else:  # anual
+            # Simplificamos y usamos el año directamente en lugar de ExtractYear
+            datos = []
+            years = entrenamientos.dates('date', 'year')
+            for year in years:
+                year_trainings = entrenamientos.filter(date__year=year.year)
+                year_data = {
+                    'periodo': year.year,
+                    'cantidad': year_trainings.count(),
+                    'distancia': year_trainings.aggregate(Sum('distance'))['distance__sum'] or 0,
+                    'duracion': year_trainings.aggregate(Sum('duration'))['duration__sum'] or datetime.timedelta(0),
+                    'calorias': year_trainings.aggregate(Sum('calories'))['calories__sum'] or 0
+                }
+                datos.append(year_data)
+            etiqueta_periodo = 'Año'
         
-        # Formatear respuesta
-        result = []
-        for item in data:
+        # Formatear la respuesta para que sea más amigable
+        resultado = []
+        for item in datos:
             # Convertir duración de segundos a formato legible
-            duration_seconds = item['duration'].total_seconds() if item['duration'] else 0
-            hours, remainder = divmod(duration_seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
+            if isinstance(item['duracion'], datetime.timedelta):
+                segundos_duracion = item['duracion'].total_seconds()
+            else:
+                segundos_duracion = 0
+                
+            horas, resto = divmod(segundos_duracion, 3600)
+            minutos, segundos = divmod(resto, 60)
             
-            result.append({
-                'period': item['period'].strftime('%Y-%m-%d') if hasattr(item['period'], 'strftime') else str(item['period']),
-                'training_count': item['count'],
-                'total_distance': round(item['distance'] or 0, 2),
-                'total_duration': f"{int(hours)}h {int(minutes)}m",
-                'total_calories': item['calories'] or 0
+            # Formato para el período
+            if hasattr(item['periodo'], 'strftime'):
+                if periodo == 'semanal':
+                    etiqueta = f"Semana {item['periodo'].strftime('%W')} de {item['periodo'].strftime('%Y')}"
+                elif periodo == 'mensual':
+                    etiqueta = item['periodo'].strftime('%B %Y')
+                else:
+                    etiqueta = str(item['periodo'])
+            else:
+                etiqueta = str(item['periodo'])
+            
+            resultado.append({
+                'periodo': etiqueta,
+                'entrenamientos': item['cantidad'],
+                'distancia_total': round(item['distancia'] or 0, 2),
+                'duracion_total': f"{int(horas)}h {int(minutos)}m",
+                'calorias_total': item['calorias'] or 0
             })
         
-        return Response(result)
+        return Response({
+            'tipo_periodo': etiqueta_periodo,
+            'datos': resultado
+        })
     
     @action(detail=False, methods=['get'])
-    def export_stats(self, request):
-        """Exportar estadísticas a PDF"""
-        user = request.user
-        stats, created = UserStats.objects.get_or_create(user=user)
+    def exportar_pdf(self, request):
+        """
+        Exporta todas las estadísticas a un archivo PDF.
         
-        # Actualizar estadísticas
-        stats.update_stats()
+        Genera un informe completo con todas las métricas del usuario.
+        """
+        usuario = request.user
+        estadisticas, _ = UserStats.objects.get_or_create(user=usuario)
+        
+        # Actualizar estadísticas antes de exportar
+        estadisticas.update_stats()
         
         # Crear buffer para el PDF
         buffer = BytesIO()
         
         # Crear documento PDF
         doc = SimpleDocTemplate(buffer, pagesize=letter)
-        elements = []
+        elementos = []
         
         # Estilos
-        styles = getSampleStyleSheet()
-        title_style = styles['Heading1']
-        subtitle_style = styles['Heading2']
-        normal_style = styles['Normal']
+        estilos = getSampleStyleSheet()
+        estilo_titulo = estilos['Heading1']
+        estilo_subtitulo = estilos['Heading2']
+        estilo_normal = estilos['Normal']
         
         # Título
-        elements.append(Paragraph(f"Estadísticas de Entrenamiento - {user.username}", title_style))
-        elements.append(Spacer(1, 12))
+        elementos.append(Paragraph(f"Estadísticas de Entrenamiento - {usuario.username}", estilo_titulo))
+        elementos.append(Spacer(1, 12))
         
         # Datos generales
-        elements.append(Paragraph("Resumen General", subtitle_style))
-        elements.append(Spacer(1, 6))
+        elementos.append(Paragraph("Resumen General", estilo_subtitulo))
+        elementos.append(Spacer(1, 6))
         
-        general_data = [
-            ["Total de entrenamientos", str(stats.total_trainings)],
-            ["Distancia total", f"{stats.total_distance:.2f} km"],
-            ["Duración total", str(stats.total_duration)],
-            ["Calorías totales", str(stats.total_calories)],
-            ["Primer entrenamiento", str(stats.first_training_date) if stats.first_training_date else "N/A"],
-            ["Último entrenamiento", str(stats.last_training_date) if stats.last_training_date else "N/A"]
+        datos_generales = [
+            ["Total de entrenamientos", str(estadisticas.total_trainings)],
+            ["Distancia total", f"{estadisticas.total_distance:.2f} km"],
+            ["Duración total", str(estadisticas.total_duration)],
+            ["Calorías totales", str(estadisticas.total_calories)],
+            ["Primer entrenamiento", str(estadisticas.first_training_date) if estadisticas.first_training_date else "N/A"],
+            ["Último entrenamiento", str(estadisticas.last_training_date) if estadisticas.last_training_date else "N/A"]
         ]
         
-        general_table = Table(general_data, colWidths=[200, 200])
-        general_table.setStyle(TableStyle([
+        tabla_general = Table(datos_generales, colWidths=[200, 200])
+        tabla_general.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('PADDING', (0, 0), (-1, -1), 6),
         ]))
         
-        elements.append(general_table)
-        elements.append(Spacer(1, 12))
+        elementos.append(tabla_general)
+        elementos.append(Spacer(1, 12))
         
         # Promedios
-        elements.append(Paragraph("Promedios", subtitle_style))
-        elements.append(Spacer(1, 6))
+        elementos.append(Paragraph("Promedios", estilo_subtitulo))
+        elementos.append(Spacer(1, 6))
         
-        avg_data = [
-            ["Distancia promedio por entrenamiento", f"{stats.avg_distance_per_training:.2f} km"],
-            ["Duración promedio por entrenamiento", str(stats.avg_duration_per_training)],
-            ["Velocidad promedio", f"{stats.avg_speed:.2f} km/h"],
-            ["Ritmo cardíaco promedio", f"{stats.avg_heart_rate:.1f} ppm"]
+        datos_promedios = [
+            ["Distancia promedio por entrenamiento", f"{estadisticas.avg_distance_per_training:.2f} km"],
+            ["Duración promedio por entrenamiento", str(estadisticas.avg_duration_per_training)],
+            ["Velocidad promedio", f"{estadisticas.avg_speed:.2f} km/h"],
+            ["Ritmo cardíaco promedio", f"{estadisticas.avg_heart_rate:.1f} ppm"]
         ]
         
-        avg_table = Table(avg_data, colWidths=[200, 200])
-        avg_table.setStyle(TableStyle([
+        tabla_promedios = Table(datos_promedios, colWidths=[200, 200])
+        tabla_promedios.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('PADDING', (0, 0), (-1, -1), 6),
         ]))
         
-        elements.append(avg_table)
-        elements.append(Spacer(1, 12))
+        elementos.append(tabla_promedios)
+        elementos.append(Spacer(1, 12))
         
         # Récords
-        elements.append(Paragraph("Récords", subtitle_style))
-        elements.append(Spacer(1, 6))
+        elementos.append(Paragraph("Récords Personales", estilo_subtitulo))
+        elementos.append(Spacer(1, 6))
         
-        records_data = [
-            ["Distancia más larga", f"{stats.longest_distance:.2f} km"],
-            ["Duración más larga", str(stats.longest_duration)],
-            ["Velocidad más alta", f"{stats.highest_speed:.2f} km/h"],
-            ["Mayor ganancia de elevación", f"{stats.highest_elevation_gain:.1f} m"]
+        datos_records = [
+            ["Distancia más larga", f"{estadisticas.longest_distance:.2f} km"],
+            ["Duración más larga", str(estadisticas.longest_duration)],
+            ["Velocidad más alta", f"{estadisticas.highest_speed:.2f} km/h"],
+            ["Mayor ganancia de elevación", f"{estadisticas.highest_elevation_gain:.1f} m"]
         ]
         
-        records_table = Table(records_data, colWidths=[200, 200])
-        records_table.setStyle(TableStyle([
+        tabla_records = Table(datos_records, colWidths=[200, 200])
+        tabla_records.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('PADDING', (0, 0), (-1, -1), 6),
         ]))
         
-        elements.append(records_table)
+        elementos.append(tabla_records)
+        elementos.append(Spacer(1, 12))
+        
+        # Actividad reciente
+        elementos.append(Paragraph("Actividad Reciente (Último Mes)", estilo_subtitulo))
+        elementos.append(Spacer(1, 6))
+        
+        # Calcular actividad reciente
+        hoy = datetime.date.today()
+        hace_30_dias = hoy - datetime.timedelta(days=30)
+        entrenamientos_recientes = Training.objects.filter(
+            user=usuario,
+            date__gte=hace_30_dias
+        )
+        
+        # Contar por tipo de actividad
+        tipos_recientes = {}
+        for t in entrenamientos_recientes:
+            tipo = t.get_activity_type_display()
+            tipos_recientes[tipo] = tipos_recientes.get(tipo, 0) + 1
+        
+        # Datos de actividad reciente
+        datos_recientes = [
+            ["Entrenamientos realizados", str(entrenamientos_recientes.count())],
+            ["Distancia total", f"{entrenamientos_recientes.aggregate(total=Sum('distance'))['total'] or 0:.2f} km"],
+        ]
+        
+        for tipo, cantidad in tipos_recientes.items():
+            datos_recientes.append([f"Entrenamientos de {tipo}", str(cantidad)])
+        
+        tabla_recientes = Table(datos_recientes, colWidths=[200, 200])
+        tabla_recientes.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('PADDING', (0, 0), (-1, -1), 6),
+        ]))
+        
+        elementos.append(tabla_recientes)
         
         # Generar PDF
-        doc.build(elements)
+        doc.build(elementos)
         
         # Preparar respuesta
         buffer.seek(0)
         response = HttpResponse(buffer, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="estadisticas_{user.username}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="estadisticas_{usuario.username}.pdf"'
         
         return response
 
 class ActivitySummaryViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para resúmenes de actividad.
+    
+    Permite acceder a los resúmenes de actividad por períodos
+    (diario, semanal, mensual, anual) y generar nuevos resúmenes.
+    """
+    
     serializer_class = ActivitySummarySerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        """Obtener resúmenes de actividad del usuario autenticado"""
-        user = self.request.user
+        """
+        Obtener resúmenes de actividad del usuario autenticado.
+        
+        Permite filtrar por tipo de período.
+        """
+        usuario = self.request.user
         
         # Filtrar por tipo de período si se especifica
-        period_type = self.request.query_params.get('period_type')
-        if period_type in ['daily', 'weekly', 'monthly', 'yearly']:
-            return ActivitySummary.objects.filter(user=user, period_type=period_type)
+        tipo_periodo = self.request.query_params.get('tipo_periodo')
+        if tipo_periodo in ['daily', 'weekly', 'monthly', 'yearly']:
+            return ActivitySummary.objects.filter(user=usuario, period_type=tipo_periodo)
         
-        return ActivitySummary.objects.filter(user=user)
+        return ActivitySummary.objects.filter(user=usuario)
     
     @action(detail=False, methods=['post'])
-    def generate_summaries(self, request):
-        """Generar o actualizar resúmenes de actividad para el usuario"""
-        user = request.user
-        period_types = request.data.get('period_types', ['weekly', 'monthly', 'yearly'])
+    def generar_resumenes(self, request):
+        """
+        Generar o actualizar resúmenes de actividad para el usuario.
+        
+        Permite crear resúmenes para diferentes períodos de tiempo
+        a partir de los entrenamientos existentes.
+        """
+        usuario = request.user
+        tipos_periodo = request.data.get('tipos_periodo', ['weekly', 'monthly', 'yearly'])
         
         # Validar tipos de período
-        valid_types = ['daily', 'weekly', 'monthly', 'yearly']
-        for period_type in period_types:
-            if period_type not in valid_types:
+        tipos_validos = ['daily', 'weekly', 'monthly', 'yearly']
+        for tipo in tipos_periodo:
+            if tipo not in tipos_validos:
                 return Response(
-                    {'error': f'Tipo de período no válido: {period_type}'},
+                    {'error': f'Tipo de período no válido: {tipo}. Debe ser uno de: {", ".join(tipos_validos)}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
         # Obtener todos los entrenamientos del usuario
-        trainings = Training.objects.filter(user=user).order_by('date')
+        entrenamientos = Training.objects.filter(user=usuario).order_by('date')
         
-        if not trainings.exists():
-            return Response({'message': 'No hay entrenamientos para generar resúmenes.'})
+        if not entrenamientos.exists():
+            return Response({'mensaje': 'No hay entrenamientos para generar resúmenes de actividad.'})
         
-        # Generar resúmenes para cada tipo de período
-        summaries_created = 0
-        summaries_updated = 0
+        # Variables para contar resultados
+        resumenes_creados = 0
+        resumenes_actualizados = 0
         
-        for period_type in period_types:
-            if period_type == 'daily':
+        # Generar resúmenes para cada tipo de período solicitado
+        for tipo_periodo in tipos_periodo:
+            if tipo_periodo == 'daily':
                 # Agrupar por día
-                daily_data = trainings.values('date').annotate(
-                    count=Count('id'),
-                    total_distance=Sum('distance'),
-                    total_calories=Sum('calories')
-                )
+                fechas_unicas = entrenamientos.dates('date', 'day')
                 
-                for day_data in daily_data:
-                    date = day_data['date']
+                for fecha in fechas_unicas:
+                    # Obtener entrenamientos de ese día
+                    entrenamientos_dia = entrenamientos.filter(date=fecha)
+                    
+                    # Calcular estadísticas
+                    cantidad = entrenamientos_dia.count()
+                    distancia_total = entrenamientos_dia.aggregate(total=Sum('distance'))['total'] or 0
+                    calorias_total = entrenamientos_dia.aggregate(total=Sum('calories'))['total'] or 0
                     
                     # Calcular duración total
-                    day_trainings = trainings.filter(date=date)
-                    total_duration_seconds = sum(
-                        t.duration.total_seconds() for t in day_trainings if t.duration
+                    segundos_totales = sum(
+                        t.duration.total_seconds() for t in entrenamientos_dia if t.duration
                     )
                     
                     # Crear o actualizar resumen
-                    summary, created = ActivitySummary.objects.update_or_create(
-                        user=user,
+                    resumen, creado = ActivitySummary.objects.update_or_create(
+                        user=usuario,
                         period_type='daily',
-                        year=date.year,
-                        month=date.month,
-                        day=date.day,
+                        year=fecha.year,
+                        month=fecha.month,
+                        day=fecha.day,
                         defaults={
-                            'start_date': date,
-                            'end_date': date,
-                            'training_count': day_data['count'],
-                            'total_distance': day_data['total_distance'] or 0,
-                            'total_duration': datetime.timedelta(seconds=total_duration_seconds),
-                            'total_calories': day_data['total_calories'] or 0,
+                            'start_date': fecha,
+                            'end_date': fecha,
+                            'training_count': cantidad,
+                            'total_distance': distancia_total,
+                            'total_duration': datetime.timedelta(seconds=segundos_totales),
+                            'total_calories': calorias_total,
                         }
                     )
                     
-                    if created:
-                        summaries_created += 1
+                    if creado:
+                        resumenes_creados += 1
                     else:
-                        summaries_updated += 1
+                        resumenes_actualizados += 1
             
-            elif period_type == 'weekly':
-                # Obtener todas las semanas únicas
-                dates = trainings.values_list('date', flat=True).distinct()
-                weeks = set((d.year, d.isocalendar()[1]) for d in dates)
+            elif tipo_periodo == 'weekly':
+                # Obtener todas las semanas únicas por año-semana
+                # Usamos dates() y un procesamiento manual para evitar dependencias
+                fechas_unicas = entrenamientos.dates('date', 'week')
+                semanas_procesadas = set()
                 
-                for year, week in weeks:
+                for fecha in fechas_unicas:
+                    # Obtener el número de semana
+                    año = fecha.year
+                    semana = fecha.isocalendar()[1]
+                    
+                    # Evitar duplicados
+                    clave_semana = f"{año}-{semana}"
+                    if clave_semana in semanas_procesadas:
+                        continue
+                    semanas_procesadas.add(clave_semana)
+                    
                     # Calcular fechas de inicio y fin de la semana
-                    first_day = datetime.datetime.strptime(f'{year}-{week}-1', '%Y-%W-%w').date()
-                    last_day = first_day + datetime.timedelta(days=6)
+                    # Aproximación simple: inicio = fecha - (día de la semana - 1)
+                    dia_semana = fecha.isocalendar()[2]  # 1=lunes, 7=domingo
+                    primer_dia = fecha - datetime.timedelta(days=dia_semana-1)
+                    ultimo_dia = primer_dia + datetime.timedelta(days=6)
                     
                     # Obtener entrenamientos de la semana
-                    week_trainings = trainings.filter(date__gte=first_day, date__lte=last_day)
+                    entrenamientos_semana = entrenamientos.filter(
+                        date__gte=primer_dia, 
+                        date__lte=ultimo_dia
+                    )
                     
-                    if week_trainings.exists():
+                    if entrenamientos_semana.exists():
                         # Calcular estadísticas
-                        training_count = week_trainings.count()
-                        total_distance = week_trainings.aggregate(Sum('distance'))['distance__sum'] or 0
-                        total_calories = week_trainings.aggregate(Sum('calories'))['calories__sum'] or 0
+                        cantidad = entrenamientos_semana.count()
+                        distancia_total = entrenamientos_semana.aggregate(total=Sum('distance'))['total'] or 0
+                        calorias_total = entrenamientos_semana.aggregate(total=Sum('calories'))['total'] or 0
                         
-                        # Calcular duración total
-                        total_duration_seconds = sum(
-                            t.duration.total_seconds() for t in week_trainings if t.duration
+                       # Calcular duración total
+                        segundos_totales = sum(
+                            t.duration.total_seconds() for t in entrenamientos_semana if t.duration
                         )
                         
                         # Crear o actualizar resumen
-                        summary, created = ActivitySummary.objects.update_or_create(
-                            user=user,
+                        resumen, creado = ActivitySummary.objects.update_or_create(
+                            user=usuario,
                             period_type='weekly',
-                            year=year,
-                            week=week,
+                            year=año,
+                            week=semana,
                             defaults={
-                                'start_date': first_day,
-                                'end_date': last_day,
-                                'training_count': training_count,
-                                'total_distance': total_distance,
-                                'total_duration': datetime.timedelta(seconds=total_duration_seconds),
-                                'total_calories': total_calories,
+                                'start_date': primer_dia,
+                                'end_date': ultimo_dia,
+                                'training_count': cantidad,
+                                'total_distance': distancia_total,
+                                'total_duration': datetime.timedelta(seconds=segundos_totales),
+                                'total_calories': calorias_total,
                             }
                         )
                         
-                        if created:
-                            summaries_created += 1
+                        if creado:
+                            resumenes_creados += 1
                         else:
-                            summaries_updated += 1
+                            resumenes_actualizados += 1
             
-            elif period_type == 'monthly':
+            elif tipo_periodo == 'monthly':
                 # Obtener todos los meses únicos
-                dates = trainings.values_list('date', flat=True).distinct()
-                months = set((d.year, d.month) for d in dates)
+                fechas_unicas = entrenamientos.dates('date', 'month')
                 
-                for year, month in months:
+                for fecha in fechas_unicas:
+                    año = fecha.year
+                    mes = fecha.month
+                    
                     # Calcular fechas de inicio y fin del mes
-                    first_day = datetime.date(year, month, 1)
-                    if month == 12:
-                        last_day = datetime.date(year, month, 31)
+                    primer_dia = datetime.date(año, mes, 1)
+                    
+                    # Último día del mes (usando el primer día del siguiente mes - 1 día)
+                    if mes == 12:
+                        ultimo_dia = datetime.date(año, mes, 31)
                     else:
-                        last_day = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
+                        ultimo_dia = datetime.date(año, mes + 1, 1) - datetime.timedelta(days=1)
                     
                     # Obtener entrenamientos del mes
-                    month_trainings = trainings.filter(date__gte=first_day, date__lte=last_day)
+                    entrenamientos_mes = entrenamientos.filter(
+                        date__gte=primer_dia, 
+                        date__lte=ultimo_dia
+                    )
                     
-                    if month_trainings.exists():
+                    if entrenamientos_mes.exists():
                         # Calcular estadísticas
-                        training_count = month_trainings.count()
-                        total_distance = month_trainings.aggregate(Sum('distance'))['distance__sum'] or 0
-                        total_calories = month_trainings.aggregate(Sum('calories'))['calories__sum'] or 0
+                        cantidad = entrenamientos_mes.count()
+                        distancia_total = entrenamientos_mes.aggregate(total=Sum('distance'))['total'] or 0
+                        calorias_total = entrenamientos_mes.aggregate(total=Sum('calories'))['total'] or 0
                         
                         # Calcular duración total
-                        total_duration_seconds = sum(
-                            t.duration.total_seconds() for t in month_trainings if t.duration
+                        segundos_totales = sum(
+                            t.duration.total_seconds() for t in entrenamientos_mes if t.duration
                         )
                         
                         # Crear o actualizar resumen
-                        summary, created = ActivitySummary.objects.update_or_create(
-                            user=user,
+                        resumen, creado = ActivitySummary.objects.update_or_create(
+                            user=usuario,
                             period_type='monthly',
-                            year=year,
-                            month=month,
+                            year=año,
+                            month=mes,
                             defaults={
-                                'start_date': first_day,
-                                'end_date': last_day,
-                                'training_count': training_count,
-                                'total_distance': total_distance,
-                                'total_duration': datetime.timedelta(seconds=total_duration_seconds),
-                                'total_calories': total_calories,
+                                'start_date': primer_dia,
+                                'end_date': ultimo_dia,
+                                'training_count': cantidad,
+                                'total_distance': distancia_total,
+                                'total_duration': datetime.timedelta(seconds=segundos_totales),
+                                'total_calories': calorias_total,
                             }
                         )
                         
-                        if created:
-                            summaries_created += 1
+                        if creado:
+                            resumenes_creados += 1
                         else:
-                            summaries_updated += 1
+                            resumenes_actualizados += 1
             
-            elif period_type == 'yearly':
+            elif tipo_periodo == 'yearly':
                 # Obtener todos los años únicos
-                dates = trainings.values_list('date', flat=True).distinct()
-                years = set(d.year for d in dates)
+                fechas_unicas = entrenamientos.dates('date', 'year')
                 
-                for year in years:
+                for fecha in fechas_unicas:
+                    año = fecha.year
+                    
                     # Calcular fechas de inicio y fin del año
-                    first_day = datetime.date(year, 1, 1)
-                    last_day = datetime.date(year, 12, 31)
+                    primer_dia = datetime.date(año, 1, 1)
+                    ultimo_dia = datetime.date(año, 12, 31)
                     
                     # Obtener entrenamientos del año
-                    year_trainings = trainings.filter(date__gte=first_day, date__lte=last_day)
+                    entrenamientos_año = entrenamientos.filter(
+                        date__gte=primer_dia, 
+                        date__lte=ultimo_dia
+                    )
                     
-                    if year_trainings.exists():
+                    if entrenamientos_año.exists():
                         # Calcular estadísticas
-                        training_count = year_trainings.count()
-                        total_distance = year_trainings.aggregate(Sum('distance'))['distance__sum'] or 0
-                        total_calories = year_trainings.aggregate(Sum('calories'))['calories__sum'] or 0
+                        cantidad = entrenamientos_año.count()
+                        distancia_total = entrenamientos_año.aggregate(total=Sum('distance'))['total'] or 0
+                        calorias_total = entrenamientos_año.aggregate(total=Sum('calories'))['total'] or 0
                         
                         # Calcular duración total
-                        total_duration_seconds = sum(
-                            t.duration.total_seconds() for t in year_trainings if t.duration
+                        segundos_totales = sum(
+                            t.duration.total_seconds() for t in entrenamientos_año if t.duration
                         )
                         
                         # Crear o actualizar resumen
-                        summary, created = ActivitySummary.objects.update_or_create(
-                            user=user,
+                        resumen, creado = ActivitySummary.objects.update_or_create(
+                            user=usuario,
                             period_type='yearly',
-                            year=year,
+                            year=año,
                             defaults={
-                                'start_date': first_day,
-                                'end_date': last_day,
-                                'training_count': training_count,
-                                'total_distance': total_distance,
-                                'total_duration': datetime.timedelta(seconds=total_duration_seconds),
-                                'total_calories': total_calories,
+                                'start_date': primer_dia,
+                                'end_date': ultimo_dia,
+                                'training_count': cantidad,
+                                'total_distance': distancia_total,
+                                'total_duration': datetime.timedelta(seconds=segundos_totales),
+                                'total_calories': calorias_total,
                             }
                         )
                         
-                        if created:
-                            summaries_created += 1
+                        if creado:
+                            resumenes_creados += 1
                         else:
-                            summaries_updated += 1
+                            resumenes_actualizados += 1
         
         return Response({
-            'message': f'Resúmenes generados: {summaries_created}, actualizados: {summaries_updated}',
-            'created': summaries_created,
-            'updated': summaries_updated
+            'mensaje': f'Resúmenes generados: {resumenes_creados}, actualizados: {resumenes_actualizados}',
+            'creados': resumenes_creados,
+            'actualizados': resumenes_actualizados
         })

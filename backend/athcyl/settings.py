@@ -1,3 +1,19 @@
+"""
+Configuración de Django para el proyecto AthCyl.
+
+Este archivo contiene la configuración general de la aplicación:
+- Base de datos
+- Aplicaciones instaladas
+- Middleware
+- Seguridad
+- Internacionalización
+- Archivos estáticos
+- Otras configuraciones globales
+
+Autor: Juan Manuel Ordás Periscal
+Fecha: Mayo 2025
+"""
+
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
@@ -6,50 +22,48 @@ from pathlib import Path
 # Cargar variables de entorno desde .env
 load_dotenv()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Ruta base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+# ADVERTENCIA: Mantenga la clave secreta usada en producción en secreto
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-your-secret-key-here'
+# ADVERTENCIA: No ejecutar con debug activado en producción
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
-ALLOWED_HOSTS = []
-
-# Application definition
-
+# Aplicaciones
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    # Aplicaciones de Django
+    'django.contrib.admin',          # Sitio de administración
+    'django.contrib.auth',           # Sistema de autenticación
+    'django.contrib.contenttypes',   # Framework de tipos de contenido
+    'django.contrib.sessions',       # Framework de sesiones
+    'django.contrib.messages',       # Framework de mensajes
+    'django.contrib.staticfiles',    # Gestión de archivos estáticos
     
-    # Third party apps
-    'rest_framework',
-    'rest_framework.authtoken',
-    'django_extensions',
-    'corsheaders',
-    'sslserver',  # Servidor de desarrollo con SSL
+    # Aplicaciones de terceros
+    'rest_framework',                # Framework REST API
+    'rest_framework.authtoken',      # Autenticación por token
+    'django_extensions',             # Utilidades extra para desarrollo
+    'corsheaders',                   # Soporte para CORS
+    'sslserver',                     # Servidor de desarrollo con SSL
     
-    # Local apps
-    'users',
-    'trainings',
-    'stats',
+    # Aplicaciones propias
+    'users',                         # Gestión de usuarios
+    'trainings',                     # Gestión de entrenamientos
+    'stats',                         # Estadísticas y análisis
 ]
 
+# Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Debe estar antes de CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware', 
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -74,80 +88,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'athcyl.wsgi.application'
 
-# Configuración de seguridad para desarrollo (sin HTTPS)
-SECURE_SSL_REDIRECT = False
-
-# Permitir todos los hosts en desarrollo
-ALLOWED_HOSTS = ['*']
-
-# Configuración de CORS para desarrollo - permitir todos los orígenes
-CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
-CORS_ALLOW_CREDENTIALS = True
-
-# Lista completa de orígenes permitidos (para depuración y desarrollo)
-CORS_ALLOWED_ORIGINS = [
-    # Local y Emulador
-    'http://localhost:19006',     # Expo Web
-    'http://localhost:19000',     # Expo DevTools
-    'http://localhost:3000',      # React en desarrollo
-    'exp://localhost:19000',      # Expo Go
-    
-    # Android Emulator
-    'http://10.0.2.2:19006',      # Android Emulator
-    'http://10.0.2.2:19000',      # Android Emulator DevTools
-    'exp://10.0.2.2:19000',       # Expo Go en emulador
-    
-    # IP Local para dispositivos físicos
-    'http://192.168.1.131:19006', # Expo en red local
-    'http://192.168.1.131:19000', # Expo en red local
-    'exp://192.168.1.131:19000',  # Expo Go en dispositivo físico
-]
-
-# Configuración de sesión y autenticación
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE = 'Lax'
-SECURE_PROXY_SSL_HEADER = None
-
-# Lista de orígenes permitidos (para producción, especifica los dominios exactos)
-CORS_ALLOWED_ORIGINS = []
-CORS_ALLOW_ALL_ORIGINS = True  # Permitir todas las conexiones durante el desarrollo
-
-# Configuración para manejar credenciales en las solicitudes CORS
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
-# Database
+# Base de datos
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-# Configuración de PostgreSQL
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        'NAME': os.getenv('DB_NAME', 'athcyl_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
             'client_encoding': 'UTF8',
         },
     }
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
+AUTH_USER_MODEL = 'users.User'
 
+# Validadores de contraseña
+# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -163,16 +123,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
+# Internacionalización
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
-
-LANGUAGE_CODE = 'es-es'
-
-TIME_ZONE = 'Europe/Madrid'
-
-USE_I18N = True
-
-USE_TZ = True
+LANGUAGE_CODE = 'es-es'         # Idioma español
+TIME_ZONE = 'Europe/Madrid'     # Zona horaria de España
+USE_I18N = True                 # Usar internacionalización
+USE_TZ = True                   # Usar zonas horarias
 
 # Archivos estáticos (CSS, JavaScript, imágenes)
 STATIC_URL = '/static/'
@@ -181,19 +137,11 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
-# Archivos de medios (imágenes subidas por usuarios)
+# Archivos multimedia (subidos por usuarios)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Configuración para servir archivos estáticos en desarrollo
-if DEBUG:
-    STATICFILES_DIRS = [
-        os.path.join(BASE_DIR, 'static'),
-    ]
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
-
+# Tipo de clave primaria por defecto
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configuración de REST Framework y SimpleJWT
@@ -209,6 +157,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
+# Configuración de JWT
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -230,7 +179,18 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti'
 }
 
-# Configuración de logs
+# Configuración de CORS (para desarrollo)
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:19006",  # Expo Web
+    "http://localhost:19000",  # Expo DevTools
+    "http://localhost:3000",   # React en desarrollo
+    "exp://localhost:19000",   # Expo Go
+    "http://10.0.2.2:19006",   # Android Emulator
+]
+
+# Configuración de logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -256,23 +216,33 @@ LOGGING = {
             'filename': os.path.join(BASE_DIR, 'debug.log'),
             'formatter': 'verbose'
         },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'error.log'),
+            'formatter': 'verbose'
+        },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': True,
-        }
+        },
+        'trainings': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'stats': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'users': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
 }
-
-# Configuración de CORS
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:19006",  # Expo Web
-    "http://localhost:19000",  # Expo DevTools
-    "http://localhost:3000",   # React en desarrollo
-    "exp://localhost:19000",   # Expo Go
-    "http://10.0.2.2:19006",   # Android Emulator
-]

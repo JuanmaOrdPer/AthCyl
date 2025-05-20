@@ -1,49 +1,75 @@
+"""
+Modelos para el seguimiento de estadísticas de entrenamiento.
+
+Este módulo define los modelos para almacenar y calcular:
+- Estadísticas globales de entrenamiento por usuario
+- Resúmenes de actividad por períodos (diario, semanal, mensual, anual)
+
+Autor: Juan Manuel Ordás Periscal
+Fecha: Mayo 2025
+"""
+
 from django.db import models
 from users.models import User
 from trainings.models import Training
 import datetime
 
 class UserStats(models.Model):
-    """Modelo para almacenar estadísticas agregadas del usuario"""
+    """
+    Modelo para almacenar estadísticas agregadas del usuario.
     
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='stats')
+    Contiene métricas totales, promedios y récords basados
+    en todos los entrenamientos del usuario.
+    """
+    
+    # Relación con el usuario (one-to-one)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='stats', verbose_name="Usuario")
     
     # Estadísticas totales
-    total_trainings = models.IntegerField(default=0)
-    total_distance = models.FloatField(default=0, help_text="Distancia total en kilómetros")
-    total_duration = models.DurationField(default=datetime.timedelta(0))
-    total_calories = models.IntegerField(default=0)
+    total_trainings = models.IntegerField(default=0, verbose_name="Total de entrenamientos")
+    total_distance = models.FloatField(default=0, help_text="Distancia total en kilómetros", verbose_name="Distancia total")
+    total_duration = models.DurationField(default=datetime.timedelta(0), verbose_name="Duración total")
+    total_calories = models.IntegerField(default=0, verbose_name="Total de calorías")
     
     # Promedios
-    avg_distance_per_training = models.FloatField(default=0, help_text="Distancia promedio por entrenamiento en km")
-    avg_duration_per_training = models.DurationField(default=datetime.timedelta(0))
-    avg_speed = models.FloatField(default=0, help_text="Velocidad promedio en km/h")
-    avg_heart_rate = models.FloatField(default=0, help_text="Ritmo cardíaco promedio")
+    avg_distance_per_training = models.FloatField(default=0, help_text="Distancia promedio por entrenamiento en km", verbose_name="Distancia promedio")
+    avg_duration_per_training = models.DurationField(default=datetime.timedelta(0), verbose_name="Duración promedio")
+    avg_speed = models.FloatField(default=0, help_text="Velocidad promedio en km/h", verbose_name="Velocidad promedio")
+    avg_heart_rate = models.FloatField(default=0, help_text="Ritmo cardíaco promedio", verbose_name="Ritmo cardíaco promedio")
     
     # Récords
-    longest_distance = models.FloatField(default=0, help_text="Distancia más larga en km")
-    longest_duration = models.DurationField(default=datetime.timedelta(0))
-    highest_speed = models.FloatField(default=0, help_text="Velocidad más alta en km/h")
-    highest_elevation_gain = models.FloatField(default=0, help_text="Mayor ganancia de elevación en metros")
+    longest_distance = models.FloatField(default=0, help_text="Distancia más larga en km", verbose_name="Distancia más larga")
+    longest_duration = models.DurationField(default=datetime.timedelta(0), verbose_name="Duración más larga")
+    highest_speed = models.FloatField(default=0, help_text="Velocidad más alta en km/h", verbose_name="Velocidad más alta")
+    highest_elevation_gain = models.FloatField(default=0, help_text="Mayor ganancia de elevación en metros", verbose_name="Mayor desnivel")
     
     # Fechas
-    first_training_date = models.DateField(null=True, blank=True)
-    last_training_date = models.DateField(null=True, blank=True)
+    first_training_date = models.DateField(null=True, blank=True, verbose_name="Fecha del primer entrenamiento")
+    last_training_date = models.DateField(null=True, blank=True, verbose_name="Fecha del último entrenamiento")
     
     # Metadatos
-    last_updated = models.DateTimeField(auto_now=True)
+    last_updated = models.DateTimeField(auto_now=True, verbose_name="Última actualización")
     
     def __str__(self):
+        """Representación en texto del objeto"""
         return f"Estadísticas de {self.user.username}"
     
     def update_stats(self):
-        """Actualiza todas las estadísticas basadas en los entrenamientos del usuario"""
+        """
+        Actualiza todas las estadísticas basadas en los entrenamientos del usuario.
         
-        trainings = Training.objects.filter(user=self.user)
-        count = trainings.count()
+        Este método recalcula todas las métricas a partir de los entrenamientos
+        actuales del usuario, asegurando que las estadísticas estén siempre actualizadas.
+        """
+        print(f"Actualizando estadísticas para el usuario {self.user.username}...")
         
-        if count == 0:
+        # Obtener todos los entrenamientos del usuario
+        entrenamientos = Training.objects.filter(user=self.user)
+        cantidad = entrenamientos.count()
+        
+        if cantidad == 0:
             # No hay entrenamientos, reiniciar estadísticas
+            print("El usuario no tiene entrenamientos, reiniciando estadísticas.")
             self.total_trainings = 0
             self.total_distance = 0
             self.total_duration = datetime.timedelta(0)
@@ -61,90 +87,118 @@ class UserStats(models.Model):
             self.save()
             return
         
-        # Calcular totales
-        total_distance = 0
-        total_duration_seconds = 0
-        total_calories = 0
+        print(f"Encontrados {cantidad} entrenamientos.")
+        
+        # Variables para calcular totales
+        distancia_total = 0
+        segundos_totales = 0
+        calorias_totales = 0
         
         # Listas para calcular promedios
-        distances = []
-        durations = []
-        speeds = []
-        heart_rates = []
+        distancias = []
+        duraciones = []
+        velocidades = []
+        ritmos_cardiacos = []
         
         # Variables para récords
-        longest_distance = 0
-        longest_duration = datetime.timedelta(0)
-        highest_speed = 0
-        highest_elevation_gain = 0
+        distancia_maxima = 0
+        duracion_maxima = datetime.timedelta(0)
+        velocidad_maxima = 0
+        desnivel_maximo = 0
         
-        # Fechas
-        dates = []
+        # Fechas de los entrenamientos
+        fechas = []
         
         # Procesar cada entrenamiento
-        for training in trainings:
+        for entrenamiento in entrenamientos:
             # Distancia
-            if training.distance:
-                total_distance += training.distance
-                distances.append(training.distance)
-                longest_distance = max(longest_distance, training.distance)
+            if entrenamiento.distance:
+                distancia_total += entrenamiento.distance
+                distancias.append(entrenamiento.distance)
+                # Actualizar récord si es necesario
+                if entrenamiento.distance > distancia_maxima:
+                    distancia_maxima = entrenamiento.distance
             
             # Duración
-            if training.duration:
-                total_duration_seconds += training.duration.total_seconds()
-                durations.append(training.duration)
-                if training.duration > longest_duration:
-                    longest_duration = training.duration
+            if entrenamiento.duration:
+                segundos_totales += entrenamiento.duration.total_seconds()
+                duraciones.append(entrenamiento.duration)
+                # Actualizar récord si es necesario
+                if entrenamiento.duration > duracion_maxima:
+                    duracion_maxima = entrenamiento.duration
             
             # Calorías
-            if training.calories:
-                total_calories += training.calories
+            if entrenamiento.calories:
+                calorias_totales += entrenamiento.calories
             
             # Velocidad
-            if training.avg_speed:
-                speeds.append(training.avg_speed)
+            if entrenamiento.avg_speed:
+                velocidades.append(entrenamiento.avg_speed)
             
-            if training.max_speed:
-                highest_speed = max(highest_speed, training.max_speed)
+            # Velocidad máxima (récord)
+            if entrenamiento.max_speed and entrenamiento.max_speed > velocidad_maxima:
+                velocidad_maxima = entrenamiento.max_speed
             
             # Ritmo cardíaco
-            if training.avg_heart_rate:
-                heart_rates.append(training.avg_heart_rate)
+            if entrenamiento.avg_heart_rate:
+                ritmos_cardiacos.append(entrenamiento.avg_heart_rate)
             
-            # Elevación
-            if training.elevation_gain:
-                highest_elevation_gain = max(highest_elevation_gain, training.elevation_gain)
+            # Elevación (desnivel)
+            if entrenamiento.elevation_gain and entrenamiento.elevation_gain > desnivel_maximo:
+                desnivel_maximo = entrenamiento.elevation_gain
             
             # Fecha
-            dates.append(training.date)
+            fechas.append(entrenamiento.date)
         
         # Actualizar totales
-        self.total_trainings = count
-        self.total_distance = total_distance
-        self.total_duration = datetime.timedelta(seconds=total_duration_seconds)
-        self.total_calories = total_calories
+        self.total_trainings = cantidad
+        self.total_distance = distancia_total
+        self.total_duration = datetime.timedelta(seconds=segundos_totales)
+        self.total_calories = calorias_totales
         
         # Actualizar promedios
-        self.avg_distance_per_training = total_distance / count if count > 0 else 0
-        self.avg_duration_per_training = datetime.timedelta(seconds=total_duration_seconds / count) if count > 0 else datetime.timedelta(0)
-        self.avg_speed = sum(speeds) / len(speeds) if speeds else 0
-        self.avg_heart_rate = sum(heart_rates) / len(heart_rates) if heart_rates else 0
+        if cantidad > 0:
+            self.avg_distance_per_training = distancia_total / cantidad
+            self.avg_duration_per_training = datetime.timedelta(seconds=segundos_totales / cantidad)
+        else:
+            self.avg_distance_per_training = 0
+            self.avg_duration_per_training = datetime.timedelta(0)
+            
+        if velocidades:
+            self.avg_speed = sum(velocidades) / len(velocidades)
+        else:
+            self.avg_speed = 0
+            
+        if ritmos_cardiacos:
+            self.avg_heart_rate = sum(ritmos_cardiacos) / len(ritmos_cardiacos)
+        else:
+            self.avg_heart_rate = 0
         
         # Actualizar récords
-        self.longest_distance = longest_distance
-        self.longest_duration = longest_duration
-        self.highest_speed = highest_speed
-        self.highest_elevation_gain = highest_elevation_gain
+        self.longest_distance = distancia_maxima
+        self.longest_duration = duracion_maxima
+        self.highest_speed = velocidad_maxima
+        self.highest_elevation_gain = desnivel_maximo
         
         # Actualizar fechas
-        if dates:
-            self.first_training_date = min(dates)
-            self.last_training_date = max(dates)
+        if fechas:
+            self.first_training_date = min(fechas)
+            self.last_training_date = max(fechas)
         
         self.save()
+        print(f"Estadísticas actualizadas correctamente para {self.user.username}.")
+    
+    class Meta:
+        verbose_name = "Estadísticas de usuario"
+        verbose_name_plural = "Estadísticas de usuarios"
 
 class ActivitySummary(models.Model):
-    """Modelo para almacenar resúmenes de actividad por período"""
+    """
+    Modelo para almacenar resúmenes de actividad por período.
+    
+    Permite agrupar estadísticas por día, semana, mes o año para
+    facilitar la visualización de tendencias y progreso.
+    """
     
     PERIOD_CHOICES = [
         ('daily', 'Diario'),
@@ -153,32 +207,40 @@ class ActivitySummary(models.Model):
         ('yearly', 'Anual'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_summaries')
-    period_type = models.CharField(max_length=10, choices=PERIOD_CHOICES)
+    # Relaciones
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_summaries', verbose_name="Usuario")
+    
+    # Tipo de período
+    period_type = models.CharField(max_length=10, choices=PERIOD_CHOICES, verbose_name="Tipo de período")
     
     # Identificadores de período
-    year = models.IntegerField()
-    month = models.IntegerField(null=True, blank=True)  # Solo para mensual y diario
-    week = models.IntegerField(null=True, blank=True)   # Solo para semanal
-    day = models.IntegerField(null=True, blank=True)    # Solo para diario
+    year = models.IntegerField(verbose_name="Año")
+    month = models.IntegerField(null=True, blank=True, verbose_name="Mes")  # Solo para mensual y diario
+    week = models.IntegerField(null=True, blank=True, verbose_name="Semana")   # Solo para semanal
+    day = models.IntegerField(null=True, blank=True, verbose_name="Día")    # Solo para diario
+    
+    # Rango de fechas
+    start_date = models.DateField(verbose_name="Fecha de inicio")
+    end_date = models.DateField(verbose_name="Fecha de fin")
     
     # Estadísticas del período
-    start_date = models.DateField()
-    end_date = models.DateField()
-    training_count = models.IntegerField(default=0)
-    total_distance = models.FloatField(default=0, help_text="Distancia total en kilómetros")
-    total_duration = models.DurationField(default=datetime.timedelta(0))
-    total_calories = models.FloatField(default=0)
+    training_count = models.IntegerField(default=0, verbose_name="Número de entrenamientos")
+    total_distance = models.FloatField(default=0, help_text="Distancia total en kilómetros", verbose_name="Distancia total")
+    total_duration = models.DurationField(default=datetime.timedelta(0), verbose_name="Duración total")
+    total_calories = models.FloatField(default=0, verbose_name="Calorías totales")
     
     # Metadatos
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
     
     class Meta:
         unique_together = ('user', 'period_type', 'year', 'month', 'week', 'day')
         ordering = ['-year', '-month', '-week', '-day']
+        verbose_name = "Resumen de actividad"
+        verbose_name_plural = "Resúmenes de actividad"
     
     def __str__(self):
+        """Representación en texto del resumen de actividad"""
         if self.period_type == 'daily':
             return f"Resumen diario: {self.day}/{self.month}/{self.year} ({self.user.username})"
         elif self.period_type == 'weekly':
