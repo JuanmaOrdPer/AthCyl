@@ -1,12 +1,12 @@
+// src/components/TrainingCard.js
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Card, Text, Chip, useTheme } from 'react-native-paper';
+import { Card, Text, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, getActivityIcon, getActivityName } from '../utils/helpers';
 
 /**
  * Componente para mostrar un entrenamiento en formato de tarjeta
- * 
  * @param {Object} props - Propiedades del componente
  * @param {Object} props.training - Datos del entrenamiento
  * @param {Function} props.onPress - Función a ejecutar al presionar la tarjeta
@@ -16,6 +16,14 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
   const theme = useTheme();
   
   if (!training) return null;
+  
+  // Componente de estadística individual
+  const StatItem = React.memo(({ icon, value }) => (
+    <View style={styles.statItem}>
+      <Ionicons name={icon} size={16} color="#666" />
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  ));
   
   return (
     <Card 
@@ -35,76 +43,26 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
               {training.title || getActivityName(training.activity_type)}
             </Text>
           </View>
-          
-          <Text style={styles.date}>
-            {formatDate(training.date)}
-          </Text>
+          <Text style={styles.date}>{formatDate(training.date)}</Text>
         </View>
         
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Ionicons name="speedometer" size={16} color="#666" />
-            <Text style={styles.statValue}>
-              {training.distance ? `${training.distance.toFixed(2)} km` : 'N/A'}
-            </Text>
-          </View>
-          
-          <View style={styles.statItem}>
-            <Ionicons name="time" size={16} color="#666" />
-            <Text style={styles.statValue}>
-              {training.duration ? formatDuration(training.duration) : 'N/A'}
-            </Text>
-          </View>
-          
-          <View style={styles.statItem}>
-            <Ionicons name="flash" size={16} color="#666" />
-            <Text style={styles.statValue}>
-              {training.avg_speed ? `${training.avg_speed.toFixed(1)} km/h` : 'N/A'}
-            </Text>
-          </View>
+          <StatItem 
+            icon="speedometer" 
+            value={training.distance ? `${training.distance.toFixed(2)} km` : 'N/A'} 
+          />
+          <StatItem 
+            icon="time" 
+            value={training.duration ? formatDuration(training.duration) : 'N/A'} 
+          />
+          <StatItem 
+            icon="flash" 
+            value={training.avg_speed ? `${training.avg_speed.toFixed(1)} km/h` : 'N/A'} 
+          />
         </View>
         
         {!compact && training.notes && (
-          <Text style={styles.notes} numberOfLines={2}>
-            {training.notes}
-          </Text>
-        )}
-        
-        {!compact && (
-          <View style={styles.tagsContainer}>
-            {training.has_gpx && (
-              <Chip 
-                style={styles.chip} 
-                textStyle={styles.chipText}
-                icon="map-marker-path"
-                mode="outlined"
-              >
-                GPX
-              </Chip>
-            )}
-            
-            {training.has_heart_rate && (
-              <Chip 
-                style={styles.chip} 
-                textStyle={styles.chipText}
-                icon="heart-pulse"
-                mode="outlined"
-              >
-                FC
-              </Chip>
-            )}
-            
-            {training.has_elevation && (
-              <Chip 
-                style={styles.chip} 
-                textStyle={styles.chipText}
-                icon="trending-up"
-                mode="outlined"
-              >
-                Desnivel
-              </Chip>
-            )}
-          </View>
+          <Text style={styles.notes} numberOfLines={2}>{training.notes}</Text>
         )}
       </Card.Content>
     </Card>
@@ -156,23 +114,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   notes: {
-    fontSize: 14,
-    color: '#444',
-    marginVertical: 8,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     marginTop: 8,
-  },
-  chip: {
-    marginRight: 8,
-    marginBottom: 4,
-    height: 24,
-  },
-  chipText: {
-    fontSize: 10,
+    color: '#666',
   },
 });
 
-export default TrainingCard;
+export default React.memo(TrainingCard);

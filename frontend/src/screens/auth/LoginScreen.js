@@ -1,33 +1,50 @@
-import React, { useState, useContext } from 'react';
+// src/screens/auth/LoginScreen.js
+import React, { useContext } from 'react';
 import { View, StyleSheet, ScrollView, Image } from 'react-native';
-import { TextInput, Button, Title, Text, Surface, useTheme } from 'react-native-paper';
+import { Button, Title, Text, Surface, useTheme } from 'react-native-paper';
 import { AuthContext } from '../../contexts/AuthContext';
+import useFormValidation from '../../hooks/useFormValidation';
+import FormField from '../../components/common/FormField';
 
+/**
+ * Pantalla de inicio de sesión
+ * @param {Object} props - Propiedades de navegación
+ */
 const LoginScreen = ({ navigation }) => {
-  const { login, error } = useContext(AuthContext);
+  const { login, error: authError, loading } = useContext(AuthContext);
   const theme = useTheme();
   
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [localError, setLocalError] = useState('');
+  // Función de validación
+  const validateLogin = (values) => {
+    const errors = {};
+    if (!values.email) {
+      errors.email = 'El email es obligatorio';
+    }
+    if (!values.password) {
+      errors.password = 'La contraseña es obligatoria';
+    }
+    return errors;
+  };
+  
+  // Hook de formulario
+  const { 
+    values, 
+    errors, 
+    touched, 
+    handleChange, 
+    validateForm 
+  } = useFormValidation(
+    { email: '', password: '' },
+    validateLogin
+  );
   
   const handleLogin = async () => {
-    // Validación básica
-    if (!email || !password) {
-      setLocalError('Por favor, completa todos los campos');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setLocalError('');
-      await login(email, password);
-    } catch (error) {
-      console.error('Error de inicio de sesión:', error);
-      setLocalError(error.response?.data?.error || 'Error al iniciar sesión');
-    } finally {
-      setLoading(false);
+    if (validateForm()) {
+      try {
+        await login(values.email, values.password);
+      } catch (error) {
+        // Error ya manejado por el contexto
+      }
     }
   };
   
@@ -44,28 +61,28 @@ const LoginScreen = ({ navigation }) => {
           <Text style={styles.subtitle}>Gestión de Entrenamientos Deportivos</Text>
         </View>
         
-        <TextInput
+        <FormField
           label="Email"
-          value={email}
-          onChangeText={setEmail}
-          mode="outlined"
+          value={values.email}
+          onChangeText={(text) => handleChange('email', text)}
           keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
+          error={errors.email}
+          touched={touched.email}
         />
         
-        <TextInput
+        <FormField
           label="Contraseña"
-          value={password}
-          onChangeText={setPassword}
-          mode="outlined"
+          value={values.password}
+          onChangeText={(text) => handleChange('password', text)}
           secureTextEntry
-          style={styles.input}
+          error={errors.password}
+          touched={touched.password}
         />
         
-        {(localError || error) && (
+        {authError && (
           <Text style={[styles.errorText, { color: theme.colors.error }]}>
-            {localError || error}
+            {authError}
           </Text>
         )}
         
@@ -122,9 +139,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 4,
     textAlign: 'center',
-  },
-  input: {
-    marginBottom: 12,
   },
   button: {
     marginTop: 16,
