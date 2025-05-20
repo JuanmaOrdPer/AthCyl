@@ -155,3 +155,5 @@ class Goal(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+        verbose_name = "Objetivo"
+        verbose_name_plural = "Objetivos"
