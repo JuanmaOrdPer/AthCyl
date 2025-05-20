@@ -7,21 +7,27 @@ import { formatDate, formatDuration, getActivityIcon, getActivityName } from '..
 
 /**
  * Componente para mostrar un entrenamiento en formato de tarjeta
+ * Optimizado y con textos en español
+ * 
  * @param {Object} props - Propiedades del componente
- * @param {Object} props.training - Datos del entrenamiento
+ * @param {Object} props.training - Datos del entrenamiento del backend
  * @param {Function} props.onPress - Función a ejecutar al presionar la tarjeta
  * @param {boolean} props.compact - Si se debe mostrar en modo compacto
  */
 const TrainingCard = ({ training, onPress, compact = false }) => {
-  const theme = useTheme();
-  
+  // Si no hay datos de entrenamiento, no renderizamos nada
   if (!training) return null;
   
-  // Componente de estadística individual
-  const StatItem = React.memo(({ icon, value }) => (
+  const theme = useTheme();
+  
+  // Componente de estadística individual optimizado con React.memo
+  const StatItem = React.memo(({ icon, label, value }) => (
     <View style={styles.statItem}>
       <Ionicons name={icon} size={16} color="#666" />
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statValue}>
+        {value}
+        {label && <Text style={styles.statLabel}> {label}</Text>}
+      </Text>
     </View>
   ));
   
@@ -31,6 +37,7 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
       onPress={onPress}
     >
       <Card.Content>
+        {/* Encabezado con tipo de actividad y fecha */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Ionicons 
@@ -46,6 +53,7 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
           <Text style={styles.date}>{formatDate(training.date)}</Text>
         </View>
         
+        {/* Estadísticas del entrenamiento */}
         <View style={styles.statsContainer}>
           <StatItem 
             icon="speedometer" 
@@ -57,12 +65,34 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
           />
           <StatItem 
             icon="flash" 
-            value={training.avg_speed ? `${training.avg_speed.toFixed(1)} km/h` : 'N/A'} 
+            value={training.avg_speed ? `${training.avg_speed.toFixed(1)}` : 'N/A'}
+            label="km/h" 
           />
         </View>
         
-        {!compact && training.notes && (
-          <Text style={styles.notes} numberOfLines={2}>{training.notes}</Text>
+        {/* Estadísticas adicionales (solo en modo no compacto) */}
+        {!compact && (
+          <View style={styles.additionalStats}>
+            {training.calories && (
+              <StatItem 
+                icon="flame" 
+                value={`${training.calories} kcal`} 
+              />
+            )}
+            {training.avg_heart_rate && (
+              <StatItem 
+                icon="heart" 
+                value={`${Math.round(training.avg_heart_rate)} ppm`} 
+              />
+            )}
+          </View>
+        )}
+        
+        {/* Notas (solo en modo no compacto) */}
+        {!compact && training.description && (
+          <Text style={styles.notes} numberOfLines={2}>
+            {training.description}
+          </Text>
         )}
       </Card.Content>
     </Card>
@@ -105,18 +135,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginVertical: 8,
   },
+  additionalStats: {
+    flexDirection: 'row',
+    marginTop: 4,
+    justifyContent: 'flex-start',
+  },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 16,
   },
   statValue: {
     marginLeft: 4,
     fontSize: 14,
   },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
   notes: {
     marginTop: 8,
     color: '#666',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });
 
+// Exportamos con React.memo para evitar renderizados innecesarios
 export default React.memo(TrainingCard);
