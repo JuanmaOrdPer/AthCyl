@@ -1,10 +1,11 @@
 // src/screens/main/TrainingsScreen.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
+import { View, FlatList, RefreshControl, Alert } from 'react-native';
 import { Text, FAB, Chip, ActivityIndicator, useTheme, Searchbar } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import TrainingCard from '../../components/TrainingCard';
+import styles from '../../styles/screens/auth/main/TrainingsScreen.styles';
 
 /**
  * Pantalla de listado de entrenamientos
@@ -173,63 +174,6 @@ const TrainingsScreen = ({ navigation }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  searchbar: {
-    margin: 16,
-    elevation: 4,
-  },
-  filtersContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  filterChip: {
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  listContainer: {
-    padding: 16,
-    paddingTop: 8,
-    flexGrow: 1, // Para que el mensaje de vacío se centre
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loaderText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-  },
-});
 
 // Memo para evitar renderizados innecesarios
 export default React.memo(TrainingsScreen);

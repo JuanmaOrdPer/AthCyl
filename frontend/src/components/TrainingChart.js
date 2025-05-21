@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, Dimensions } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { LineChart, BarChart } from 'react-native-chart-kit';
+import styles from '../styles/components/TrainingChart.styles';
 
 const screenWidth = Dimensions.get('window').width - 32; // Ancho de pantalla menos márgenes
 
@@ -88,31 +89,5 @@ const TrainingChart = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginVertical: 8,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  chart: {
-    borderRadius: 16,
-  },
-  emptyContainer: {
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginVertical: 8,
-  },
-  emptyText: {
-    color: '#666',
-    fontStyle: 'italic',
-  },
-});
 
 export default TrainingChart;

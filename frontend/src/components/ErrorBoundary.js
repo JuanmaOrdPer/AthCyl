@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Button } from 'react-native';
+import styles from '../styles/components/ErrorBoundary.styles';
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {

@@ -1,7 +1,8 @@
 import React, { useState, useContext } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { TextInput, Button, Title, Text, Surface, useTheme } from 'react-native-paper';
 import { AuthContext } from '../../contexts/AuthContext';
+import styles from '../../styles/screens/auth/RegisterScreen.styles';
 
 const RegisterScreen = ({ navigation }) => {
   const { register } = useContext(AuthContext);
@@ -147,53 +148,5 @@ const RegisterScreen = ({ navigation }) => {
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 16,
-    justifyContent: 'center',
-  },
-  surface: {
-    padding: 16,
-    borderRadius: 8,
-    elevation: 4,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  input: {
-    marginBottom: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  halfInput: {
-    width: '48%',
-  },
-  button: {
-    marginTop: 16,
-    paddingVertical: 6,
-  },
-  errorText: {
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  requiredText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 8,
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-});
 
 export default RegisterScreen;

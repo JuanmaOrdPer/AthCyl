@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, Animated, TouchableOpacity } from 'react-native';
 import { Text, Surface, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import styles from '../styles/components/NotificationBanner.styles';
 
 /**
  * Componente para mostrar notificaciones y alertas dentro de la aplicación
@@ -145,33 +146,5 @@ const NotificationBanner = ({
     </Animated.View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    padding: 8,
-  },
-  banner: {
-    borderRadius: 8,
-    elevation: 4,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
-  icon: {
-    marginRight: 8,
-  },
-  message: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-});
 
 export default NotificationBanner;

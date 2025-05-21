@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, Dimensions } from 'react-native';
 import { Text, ActivityIndicator, useTheme } from 'react-native-paper';
 import MapView, { Polyline, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import styles from '../styles/components/TrainingMap.styles';
 
 const { width } = Dimensions.get('window');
 
@@ -158,27 +159,5 @@ const TrainingMap = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    borderRadius: 8,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  loadingText: {
-    marginTop: 8,
-    fontSize: 14,
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    padding: 16,
-  },
-});
 
 export default TrainingMap;

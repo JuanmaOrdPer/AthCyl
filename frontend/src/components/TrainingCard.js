@@ -1,9 +1,10 @@
 // src/components/TrainingCard.js
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { Card, Text, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, getActivityIcon, getActivityName } from '../utils/helpers';
+import styles from '../styles/components/TrainingCard.styles';
 
 /**
  * Componente para mostrar un entrenamiento en formato de tarjeta
@@ -98,68 +99,6 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
     </Card>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    marginBottom: 16,
-    elevation: 2,
-  },
-  compactCard: {
-    marginBottom: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  icon: {
-    marginRight: 8,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  date: {
-    fontSize: 12,
-    color: '#666',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 8,
-  },
-  additionalStats: {
-    flexDirection: 'row',
-    marginTop: 4,
-    justifyContent: 'flex-start',
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  statValue: {
-    marginLeft: 4,
-    fontSize: 14,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-  },
-  notes: {
-    marginTop: 8,
-    color: '#666',
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-});
 
 // Exportamos con React.memo para evitar renderizados innecesarios
 export default React.memo(TrainingCard);
