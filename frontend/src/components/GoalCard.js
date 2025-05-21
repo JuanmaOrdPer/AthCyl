@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Card, Text, ProgressBar, Chip, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, getActivityIcon, getActivityName } from '../utils/helpers';
-import styles from '../styles/components/GoalCard.styles';
+import { goalCardStyles as styles, commonStyles } from '../styles';
 
 /**
  * Componente para mostrar un objetivo de entrenamiento

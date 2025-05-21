@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { View, ScrollView } from 'react-native';
 import { TextInput, Button, Title, Text, Surface, useTheme } from 'react-native-paper';
 import { AuthContext } from '../../contexts/AuthContext';
-import styles from '../../styles/screens/auth/RegisterScreen.styles';
+import { registerScreenStyles as styles, commonStyles } from '../../styles';
 
 const RegisterScreen = ({ navigation }) => {
   const { register } = useContext(AuthContext);

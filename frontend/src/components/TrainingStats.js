@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Text, Card, Divider, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDuration, getActivityIcon, getActivityName } from '../utils/helpers';
-import styles from '../styles/components/TrainingStats.styles';
+import { trainingStatsStyles as styles, commonStyles } from '../styles';
 
 /**
  * Componente para mostrar estadísticas detalladas de un entrenamiento

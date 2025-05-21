@@ -3,7 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { Surface, Text, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '../utils/helpers';
-import styles from '../styles/components/AchievementCard.styles';
+import { achievementCardStyles as styles, commonStyles } from '../styles';
 
 /**
  * Componente para mostrar un logro o medalla

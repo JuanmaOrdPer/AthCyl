@@ -9,7 +9,7 @@ import ActivitySummary from '../../components/ActivitySummary';
 import TrainingCard from '../../components/TrainingCard';
 import GoalCard from '../../components/GoalCard';
 import AchievementCard from '../../components/AchievementCard';
-import styles from '../../styles/screens/main/HomeScreen.styles';
+import { homeScreenStyles as styles, commonStyles } from '../../styles';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useContext(AuthContext);

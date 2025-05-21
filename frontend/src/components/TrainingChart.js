@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Dimensions } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { LineChart, BarChart } from 'react-native-chart-kit';
-import styles from '../styles/components/TrainingChart.styles';
+import { trainingChartStyles as styles, commonStyles } from '../styles';
 
 const screenWidth = Dimensions.get('window').width - 32; // Ancho de pantalla menos márgenes
 

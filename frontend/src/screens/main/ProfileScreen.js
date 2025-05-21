@@ -5,7 +5,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import api from '../../services/api';
-import styles from '../../styles/screens/auth/main/ProfileScreen.styles';
+import { profileScreenStyles as styles, commonStyles } from '../../styles';
 
 const ProfileScreen = () => {
   const { user, updateProfile, logout } = useContext(AuthContext);

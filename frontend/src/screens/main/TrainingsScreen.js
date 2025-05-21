@@ -5,7 +5,7 @@ import { Text, FAB, Chip, ActivityIndicator, useTheme, Searchbar } from 'react-n
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import TrainingCard from '../../components/TrainingCard';
-import styles from '../../styles/screens/auth/main/TrainingsScreen.styles';
+import { trainingsScreenStyles as styles, commonStyles } from '../../styles';
 
 /**
  * Pantalla de listado de entrenamientos

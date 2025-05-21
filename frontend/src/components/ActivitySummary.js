@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Card, Text, ProgressBar, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDuration } from '../utils/helpers';
-import styles from '../styles/components/ActivitySummary.styles';
+import { activitySummaryStyles as styles, commonStyles } from '../styles';
 
 /**
  * Componente para mostrar un resumen de actividad (semanal, mensual, etc.)

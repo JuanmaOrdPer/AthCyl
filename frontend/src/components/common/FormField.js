@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TextInput, HelperText } from 'react-native-paper';
+import { formFieldStyles as styles, commonStyles } from '../../styles';
 
 /**
  * Componente de campo de formulario reutilizable

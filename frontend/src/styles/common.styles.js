@@ -1,6 +1,6 @@
 // src/styles/common.styles.js
 import { StyleSheet } from 'react-native';
-import { theme } from './theme';
+import theme from './theme/index';
 
 /**
  * Estilos comunes reutilizables en toda la aplicación
@@ -9,14 +9,16 @@ export default StyleSheet.create({
   // Contenedores
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.default,
   },
   contentContainer: {
-    padding: 16,
+    padding: theme.spacing.md,
   },
   card: {
-    marginBottom: 16,
-    elevation: 2,
+    marginBottom: theme.spacing.md,
+    borderRadius: theme.sizes.borderRadius.md,
+    backgroundColor: theme.colors.background.card,
+    ...theme.shadows.sm,
   },
   
   // Elementos de carga
@@ -26,8 +28,9 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    marginTop: theme.spacing.md,
+    ...theme.textStyles.body2,
+    color: theme.colors.text.secondary,
   },
   
   // Mensajes vacíos
@@ -35,44 +38,41 @@ export default StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: theme.spacing.xl,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 16,
+    ...theme.textStyles.h4,
+    marginTop: theme.spacing.md,
     textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
+    ...theme.textStyles.body2,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.sm,
     textAlign: 'center',
   },
   
   // Tipografía
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    ...theme.textStyles.h1,
+    marginBottom: theme.spacing.md,
   },
   subtitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    ...theme.textStyles.h3,
+    marginBottom: theme.spacing.sm,
   },
   text: {
-    fontSize: 14,
-    color: '#212121',
+    ...theme.textStyles.body1,
+    color: theme.colors.text.primary,
   },
   textMuted: {
-    fontSize: 14,
-    color: '#666',
+    ...theme.textStyles.body2,
+    color: theme.colors.text.secondary,
   },
   
   // Formularios
   input: {
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
   },
   row: {
     flexDirection: 'row',
@@ -83,41 +83,75 @@ export default StyleSheet.create({
   },
   errorText: {
     color: theme.colors.error,
-    fontSize: 12,
-    marginTop: -8,
-    marginBottom: 8,
+    ...theme.textStyles.caption,
+    marginTop: -theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
   
   // Botones y acciones
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: theme.spacing.md,
   },
   button: {
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: theme.spacing.xs,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: theme.spacing.md,
     right: 0,
     bottom: 0,
   },
   
   // Divisores
   divider: {
-    marginVertical: 8,
+    marginVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.divider,
+    height: theme.sizes.borderWidth.thin,
   },
   
   // Filtros y chips
   filterContainer: {
     flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
-    elevation: 2,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.paper,
+    ...theme.shadows.sm,
   },
   filterChip: {
-    marginRight: 8,
+    marginRight: theme.spacing.sm,
+  },
+  
+  // Secciones
+  section: {
+    marginBottom: theme.spacing.lg,
+  },
+  sectionTitle: {
+    ...theme.textStyles.h3,
+    marginBottom: theme.spacing.sm,
+  },
+  
+  // Listas
+  list: {
+    paddingVertical: theme.spacing.sm,
+  },
+  listItem: {
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: theme.sizes.borderWidth.thin,
+    borderBottomColor: theme.colors.divider,
+  },
+  
+  // Badges
+  badge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs / 2,
+    borderRadius: theme.sizes.borderRadius.sm,
+    backgroundColor: theme.colors.primary,
+  },
+  badgeText: {
+    color: theme.colors.text.inverse,
+    ...theme.textStyles.caption,
+    fontWeight: theme.fontWeight.bold,
   },
 });

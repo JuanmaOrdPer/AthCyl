@@ -6,7 +6,7 @@ import MapView, { Polyline, Marker } from 'react-native-maps';
 import { LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import api from '../../services/api';
-import styles from '../../styles/screens/auth/main/TrainingDetailScreen.styles';
+import { trainingDetailScreenStyles as styles, commonStyles } from '../../styles';
 
 const screenWidth = Dimensions.get('window').width - 32; // Ancho de pantalla menos márgenes
 

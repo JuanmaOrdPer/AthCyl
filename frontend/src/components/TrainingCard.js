@@ -4,7 +4,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { Card, Text, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, getActivityIcon, getActivityName } from '../utils/helpers';
-import styles from '../styles/components/TrainingCard.styles';
+import { trainingCardStyles as styles, commonStyles } from '../styles';
 
 /**
  * Componente para mostrar un entrenamiento en formato de tarjeta

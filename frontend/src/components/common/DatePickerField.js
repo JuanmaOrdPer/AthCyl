@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button, Text, HelperText } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { datePickerFieldStyles as styles, commonStyles } from '../../styles';
 
 /**
  * Componente para selección de fechas

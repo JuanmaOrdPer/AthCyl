@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Animated, TouchableOpacity } from 'react-native';
 import { Text, Surface, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import styles from '../styles/components/NotificationBanner.styles';
+import { notificationBannerStyles as styles, commonStyles } from '../styles';
 
 /**
  * Componente para mostrar notificaciones y alertas dentro de la aplicación

@@ -6,7 +6,7 @@ import { PieChart } from 'react-native-chart-kit';
 import api from '../../services/api';
 import TrainingChart from '../../components/TrainingChart';
 import { formatDuration, getActivityName, getRandomColor } from '../../utils/helpers';
-import styles from '../../styles/screens/auth/main/StatsScreen.styles';
+import { statsScreenStyles as styles, commonStyles } from '../../styles';
 
 const screenWidth = Dimensions.get('window').width - 32; // Ancho de pantalla menos márgenes
 

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button, Text, Menu, HelperText } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import { selectFieldStyles as styles, commonStyles } from '../../styles';
 
 /**
  * Componente de selección desplegable

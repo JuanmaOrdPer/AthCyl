@@ -1,8 +1,9 @@
 // src/styles/index.js
 // Este archivo facilita la importación de múltiples estilos
 
-// Tema general
-export { theme } from './theme';
+// Sistema de diseño y tema
+export { theme } from './theme.js';
+export { appTheme } from './theme.js';
 
 // Estilos comunes
 export { default as commonStyles } from './common.styles';

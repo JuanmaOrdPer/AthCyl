@@ -4,7 +4,7 @@ import { Card, Title, Text, Button, FAB, Divider, ActivityIndicator, useTheme, P
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../../services/api';
-import styles from '../../styles/screens/auth/main/GoalsScreen.styles';
+import { goalsScreenStyles as styles, commonStyles } from '../../styles';
 
 const GoalsScreen = () => {
   const theme = useTheme();

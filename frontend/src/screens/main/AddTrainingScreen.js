@@ -6,7 +6,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../../services/api';
-import styles from '../../styles/screens/auth/main/AddTraining.styles';
+import { addTrainingScreenStyles as styles, commonStyles } from '../../styles';
 
 const AddTrainingScreen = ({ navigation }) => {
   const theme = useTheme();

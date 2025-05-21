@@ -5,7 +5,7 @@ import { Button, Title, Text, Surface, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../contexts/AuthContext';
 import FormField from '../../components/common/FormField';
-import styles from '../../styles/screens/auth/LoginScreen.styles';
+import { loginScreenStyles as styles, commonStyles } from '../../styles';
 
 /**
  * Pantalla de inicio de sesión

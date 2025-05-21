@@ -1,18 +1,24 @@
+// src/styles/theme.js
 import { DefaultTheme } from 'react-native-paper';
+import theme from './theme/index';
 
-export const theme = {
+// Actualiza el tema de react-native-paper con nuestro tema personalizado
+export const appTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#1E88E5',
-    accent: '#42A5F5',
-    background: '#F5F5F5',
-    surface: '#FFFFFF',
-    text: '#212121',
-    error: '#D32F2F',
-    success: '#4CAF50',
-    warning: '#FFC107',
-    info: '#2196F3',
+    primary: theme.colors.primary,
+    accent: theme.colors.secondary,
+    background: theme.colors.background.default,
+    surface: theme.colors.background.paper,
+    text: theme.colors.text.primary,
+    error: theme.colors.error,
+    success: theme.colors.success,
+    warning: theme.colors.warning,
+    info: theme.colors.info,
   },
-  roundness: 8,
+  roundness: theme.roundness,
 };
+
+// Exportar el tema personalizado
+export { theme };

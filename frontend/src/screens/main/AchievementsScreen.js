@@ -5,8 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import AchievementCard from '../../components/AchievementCard';
 import { useNotification } from '../../contexts/NotificationContext';
-import styles from '../../styles/screens/auth/main/AchievementsScreen.styles';
-import styles from '../../styles/screens/auth/main/AchievementsScreen.styles';
+import { achievementsScreenStyles as styles, commonStyles } from '../../styles';
 
 const AchievementsScreen = ({ navigation }) => {
   const theme = useTheme();
