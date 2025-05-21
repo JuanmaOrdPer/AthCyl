@@ -4,7 +4,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { Card, Text, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDuration, getActivityIcon, getActivityName } from '../utils/helpers';
-import { trainingCardStyles as styles, commonStyles } from '../styles';
+import { trainingCardStyles as styles, commonStyles,theme } from '../styles';
 
 /**
  * Componente para mostrar un entrenamiento en formato de tarjeta
@@ -19,22 +19,21 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
   // Si no hay datos de entrenamiento, no renderizamos nada
   if (!training) return null;
   
-  const theme = useTheme();
   
   // Componente de estadística individual optimizado con React.memo
   const StatItem = React.memo(({ icon, label, value }) => (
     <View style={styles.statItem}>
-      <Ionicons name={icon} size={16} color="#666" />
+      <Ionicons name={icon} size={16} color={theme.colors.text.secondary} />
       <Text style={styles.statValue}>
         {value}
-        {label && <Text style={styles.statLabel}> {label}</Text>}
+        {label && <Text style={[commonStyles.textMuted, styles.statLabel]}> {label}</Text>}
       </Text>
     </View>
   ));
   
   return (
     <Card 
-      style={[styles.card, compact && styles.compactCard]} 
+      style={[commonStyles.card,styles.card, compact && styles.compactCard]} 
       onPress={onPress}
     >
       <Card.Content>
@@ -47,11 +46,11 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
               color={theme.colors.primary} 
               style={styles.icon} 
             />
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[commonStyles.subtitle,styles.title]} numberOfLines={1}>
               {training.title || getActivityName(training.activity_type)}
             </Text>
           </View>
-          <Text style={styles.date}>{formatDate(training.date)}</Text>
+          <Text style={[commonStyles.textMuted,styles.date]}>{formatDate(training.date)}</Text>
         </View>
         
         {/* Estadísticas del entrenamiento */}
@@ -91,7 +90,7 @@ const TrainingCard = ({ training, onPress, compact = false }) => {
         
         {/* Notas (solo en modo no compacto) */}
         {!compact && training.description && (
-          <Text style={styles.notes} numberOfLines={2}>
+          <Text style={ [commonStyles.textMuted,styles.notes]} numberOfLines={2}>
             {training.description}
           </Text>
         )}

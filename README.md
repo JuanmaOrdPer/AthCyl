@@ -1,6 +1,190 @@
-# AthCyl - Aplicación de Gestión de Entrenamientos Deportivos
+## 🚀 Características Principales
 
-AthCyl es una aplicación multiplataforma diseñada para facilitar la gestión y análisis de entrenamientos deportivos. Permite a los usuarios registrar sus sesiones manualmente o mediante la integración con archivos GPX/TCX, formatos ampliamente utilizados en dispositivos deportivos. La aplicación ofrece estadísticas avanzadas y visualización de rutas para ayudar a los usuarios a mejorar su rendimiento.
+### 🔐 Autenticación y Seguridad
+- **Inicio de sesión con correo electrónico** (no se utiliza nombre de usuario)
+- **Autenticación JWT** para acceso seguro a la API
+- **Almacenamiento seguro** de credenciales en el dispositivo
+- **Protección CSRF y XSS** integrada
+- **Comunicación cifrada** con el servidor
+
+### 🏃‍♂️ Gestión de Entrenamientos
+- **Registro manual** de entrenamientos con métricas detalladas
+- **Importación automática** desde archivos GPX/TCX
+- **Clasificación** por tipo de deporte (carrera, ciclismo, natación, etc.)
+- **Búsqueda y filtrado** avanzado de actividades
+- **Edición y eliminación** de entrenamientos
+
+### 📊 Análisis y Estadísticas
+- **Panel de estadísticas** con métricas clave
+- **Gráficos interactivos** de rendimiento
+- **Seguimiento de progreso** a lo largo del tiempo
+- **Comparación** entre diferentes períodos
+- **Exportación de datos** en múltiples formatos
+
+### 🗺️ Mapas y Rutas
+- **Visualización de rutas** en mapas interactivos
+- **Perfil de elevación** detallado
+- **Marcadores** para puntos de interés
+- **Compartir rutas** con otros usuarios
+
+## 🛠️ Tecnologías Utilizadas
+
+### Backend (API REST)
+- **Python 3.8+** - Lenguaje de programación principal
+- **Django 4.2** - Framework web de alto nivel
+- **Django REST Framework** - Para construir la API RESTful
+- **Django REST Framework JWT** - Autenticación con tokens JWT
+- **PostgreSQL** - Base de datos relacional
+- **Gunicorn** - Servidor WSGI para producción
+- **Nginx** - Servidor web y proxy inverso
+- **Redis** - Caché y cola de tareas
+
+### Frontend (Aplicación Móvil)
+- **React Native con Expo** - Framework multiplataforma
+- **React Navigation** - Navegación entre pantallas
+- **React Native Maps** - Visualización de mapas
+- **React Native Chart Kit** - Gráficos interactivos
+- **Axios** - Cliente HTTP para la API
+- **Redux Toolkit** - Gestión del estado global
+- **React Native Paper** - Componentes de UI
+- **Lottie** - Animaciones fluidas
+
+### Herramientas de Desarrollo
+- **Docker** - Contenedorización
+- **Git** - Control de versiones
+- **GitHub Actions** - CI/CD
+- **ESLint & Prettier** - Formato de código
+- **Jest & Testing Library** - Pruebas unitarias
+
+## 🚀 Empezando
+
+### Requisitos Previos
+
+- Node.js 16+ y npm/yarn
+- Python 3.8+
+- PostgreSQL 12+
+- Git
+- Docker (opcional)
+
+### Instalación del Backend
+
+1. Clonar el repositorio:
+   ```bash
+   git clone https://github.com/tu-usuario/athcyl.git
+   cd athcyl/backend
+   ```
+
+2. Crear y activar un entorno virtual:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   ```
+
+3. Instalar dependencias:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Configurar variables de entorno (crear un archivo `.env` en la carpeta `backend`):
+   ```env
+   DEBUG=True
+   SECRET_KEY=tu-clave-secreta-aqui
+   DB_NAME=athcyl_db
+   DB_USER=postgres
+   DB_PASSWORD=postgres
+   DB_HOST=localhost
+   DB_PORT=5432
+   ```
+
+5. Aplicar migraciones:
+   ```bash
+   python manage.py migrate
+   ```
+
+6. Crear un superusuario:
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+7. Iniciar el servidor de desarrollo:
+   ```bash
+   python manage.py runserver
+   ```
+
+### Instalación del Frontend
+
+1. Navegar al directorio del frontend:
+   ```bash
+   cd ../frontend
+   ```
+
+2. Instalar dependencias:
+   ```bash
+   npm install
+   # o
+   yarn install
+   ```
+
+3. Configurar la URL de la API en `src/config/api.js`:
+   ```javascript
+   export const API_BASE_URL = 'http://tu-servidor-backend:8000';
+   ```
+
+4. Iniciar la aplicación:
+   ```bash
+   npm start
+   # o
+   yarn start
+   ```
+
+## 📱 Uso
+
+### Autenticación
+1. Regístrate con tu correo electrónico y contraseña
+2. Inicia sesión con tus credenciales
+3. Tu sesión se mantendrá activa incluso después de cerrar la aplicación
+
+### Añadir un Entrenamiento
+1. Toca el botón "+" en la pantalla principal
+2. Completa los detalles del entrenamiento
+3. Opcionalmente, importa un archivo GPX/TCX
+4. Guarda para registrar el entrenamiento
+
+### Ver Estadísticas
+1. Navega a la pestaña "Estadísticas"
+2. Selecciona el rango de fechas que deseas analizar
+3. Explora las diferentes métricas y gráficos disponibles
+
+## 🤝 Contribución
+
+¡Las contribuciones son bienvenidas! Por favor, lee nuestras [pautas de contribución](CONTRIBUTING.md) antes de enviar un pull request.
+
+1. Haz un fork del proyecto
+2. Crea una rama para tu característica (`git checkout -b feature/nueva-caracteristica`)
+3. Haz commit de tus cambios (`git commit -m 'Añadir nueva característica'`)
+4. Haz push a la rama (`git push origin feature/nueva-caracteristica`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+## 📞 Contacto
+
+Juan Manuel Ordás Periscal - [@tuusuario](https://twitter.com/tuusuario)
+
+Enlace del proyecto: [https://github.com/tu-usuario/athcyl](https://github.com/tu-usuario/athcyl)
+
+## 🙏 Agradecimientos
+
+- A todos los contribuyentes que han ayudado a mejorar este proyecto
+- A la comunidad de código abierto por las increíbles herramientas que hacen posible AthCyl
+
+---
+
+<div align="center">
+  Hecho con ❤️ por el equipo de AthCyl
+</div>
 
 ## Características Principales
 
