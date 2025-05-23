@@ -12,7 +12,7 @@ import Constants from 'expo-constants';
 
 // Obtener la URL base de la API desde la configuración
 const apiConfig = Constants.expoConfig?.extra || {};
-let API_URL = apiConfig.apiUrl || 'http://192.168.0.7:8000';
+let API_URL = apiConfig.apiUrl || 'http://192.0.0.1:8000';
 
 // En desarrollo, ajustar URL para dispositivos Android
 if (__DEV__) {

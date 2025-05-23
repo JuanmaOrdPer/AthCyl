@@ -76,7 +76,7 @@
 
 2. Crear y activar un entorno virtual:
    ```bash
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # En Windows: venv\Scripts\activate
    ```
 
@@ -125,7 +125,7 @@
    yarn install
    ```
 
-3. Configurar la URL de la API en `src/config/api.js`:
+3. Configurar la URL de la API en `src/service/api.js`:
    ```javascript
    export const API_BASE_URL = 'http://tu-servidor-backend:8000';
    ```
