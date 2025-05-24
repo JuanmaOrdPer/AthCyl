@@ -30,7 +30,7 @@ export default {
   extra: {
     // Configuración para la API - Usa tu IP local
     // Ejemplo: 'http://192.168.1.100:8000' (sin HTTPS para desarrollo)
-    apiUrl: 'http://192.168.0.7:8000',
+    apiUrl: 'http://192.168.1.137:8000',
     // Usar autenticación básica en lugar de JWT
     useBasicAuth: true
   }
