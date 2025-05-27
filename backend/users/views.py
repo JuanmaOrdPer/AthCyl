@@ -97,41 +97,38 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Acción personalizada para iniciar sesión.
         
-        Valida las credenciales y devuelve un token de autenticación si son correctas.
+        Valida las credenciales (usuario y contraseña) y devuelve un token de autenticación si son correctas.
         """
-        # Validar los datos de entrada
-        serializer = LoginSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response(
                 {'error': 'Datos de inicio de sesión inválidos', 'detalles': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # Extraer credenciales
-        email = serializer.validated_data.get('email')
-        contrasena = serializer.validated_data.get('password')
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
         
-        # Autenticar usuario
-        usuario = authenticate(request, email=email, password=contrasena)
+        # Autenticar al usuario usando el nombre de usuario
+        user = authenticate(request, username=username, password=password)
         
-        # Verificar si la autenticación fue exitosa
-        if usuario is None:
+        if user is None:
             return Response(
-                {'error': 'Las credenciales proporcionadas no son válidas'},
+                {'error': 'Nombre de usuario o contraseña incorrectos'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
             
-        # Iniciar sesión en Django
-        login(request, usuario)
+        # Iniciar sesión para crear la sesión del usuario
+        login(request, user)
         
         # Obtener o crear token de autenticación
-        token, _ = Token.objects.get_or_create(user=usuario)
+        token, created = Token.objects.get_or_create(user=user)
         
-        # Devolver información del usuario y token
+        # Devolver datos del usuario y token
+        user_serializer = UserSerializer(user)
         return Response({
-            'usuario': UserSerializer(usuario).data,
             'token': token.key,
-            'mensaje': 'Has iniciado sesión correctamente'
+            'user': user_serializer.data
         })
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
@@ -149,13 +146,17 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # Crear usuario
-        usuario = serializer.save()
-        
-        # Verificar si se creó correctamente
-        if usuario:
+        try:
+            # Crear y guardar el usuario explícitamente
+            usuario = serializer.save()
+            
+            # Forzar la guardada del usuario en la base de datos
+            usuario.save()
+            
             # Generar token para inicio de sesión automático
-            token, created = Token.objects.get_or_create(user=usuario)
+            token = Token.objects.create(user=usuario)
+            
+            # Devolver respuesta exitosa
             return Response(
                 {
                     'usuario': UserSerializer(usuario).data,
@@ -164,11 +165,13 @@ class UserViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_201_CREATED
             )
-        
-        return Response(
-            {'error': 'No se pudo crear el usuario'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+            
+        except Exception as e:
+            print(f"Error durante el registro: {str(e)}")
+            return Response(
+                {'error': f'Error al registrar el usuario: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=False, methods=['post'])
     def logout(self, request):

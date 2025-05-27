@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 export default StyleSheet.create({
   card: {
     marginBottom: 16,
-    elevation: 2,
+    borderRadius: 8,
   },
   statsContainer: {
     marginBottom: 8,
@@ -25,9 +25,8 @@ export default StyleSheet.create({
     color: '#666',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 4,
   },
   progressContainer: {
     marginTop: 4,

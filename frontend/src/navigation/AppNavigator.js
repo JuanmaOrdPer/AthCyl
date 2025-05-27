@@ -3,7 +3,8 @@ import React, { useContext } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import { NavigationContainer } from '@react-navigation/native';
+import Icon, { IconNames } from '../components/common/Icon';
 import { useTheme } from 'react-native-paper';
 
 // Contexto de autenticación
@@ -99,22 +100,25 @@ const MainNavigator = () => {
 
           switch (route.name) {
             case 'Home':
-              iconName = focused ? 'home' : 'home-outline';
+              iconName = IconNames.home;
               break;
             case 'Trainings':
-              iconName = focused ? 'fitness' : 'fitness-outline';
+              iconName = IconNames.activity;
               break;
             case 'Stats':
-              iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+              iconName = IconNames.stats;
+              break;
+            case 'Goals':
+              iconName = IconNames.trophy;
               break;
             case 'Profile':
-              iconName = focused ? 'person' : 'person-outline';
+              iconName = IconNames.profile;
               break;
             default:
-              iconName = 'help-circle-outline';
+              iconName = IconNames.home;
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Icon name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: 'gray',

@@ -3,6 +3,7 @@ module.exports = function(api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
+      'react-native-web',
       '@babel/plugin-proposal-export-namespace-from',
       ['module:react-native-dotenv', {
         moduleName: '@env',
@@ -12,6 +13,14 @@ module.exports = function(api) {
         safe: false,
         allowUndefined: true,
       }],
+      'react-native-reanimated/plugin',
+      '@babel/plugin-proposal-export-default-from',
+      '@babel/plugin-transform-runtime',
     ],
+    env: {
+      production: {
+        plugins: ['react-native-paper/babel']
+      }
+    }
   };
 };

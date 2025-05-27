@@ -87,14 +87,19 @@ class LoginSerializer(serializers.Serializer):
     """
     Serializador para el inicio de sesión.
     
-    Recoge email y contraseña para autenticar al usuario.
+    Recoge nombre de usuario y contraseña para autenticar al usuario.
     """
     
-    email = serializers.EmailField(label="Correo electrónico")
+    username = serializers.CharField(
+        label="Nombre de usuario",
+        max_length=150,
+        required=True
+    )
     password = serializers.CharField(
         label="Contraseña",
         style={'input_type': 'password'},
-        trim_whitespace=False
+        trim_whitespace=False,
+        required=True
     )
 
 class RegistroSerializer(serializers.ModelSerializer):
@@ -119,12 +124,21 @@ class RegistroSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['email', 'username', 'password', 'password_confirm', 'first_name', 'last_name']
+        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
         extra_kwargs = {
-            'email': {'label': 'Correo electrónico'},
-            'username': {'label': 'Nombre de usuario'},
-            'first_name': {'label': 'Nombre', 'required': False},
-            'last_name': {'label': 'Apellidos', 'required': False},
+            'email': {
+                'label': 'Correo electrónico',
+                'required': True,
+                'allow_blank': False
+            },
+            'username': {
+                'label': 'Nombre de usuario',
+                'required': True,
+                'allow_blank': False,
+                'validators': []  # Deshabilitamos validadores para manejar manualmente
+            },
+            'first_name': {'label': 'Nombre', 'required': False, 'allow_blank': True},
+            'last_name': {'label': 'Apellidos', 'required': False, 'allow_blank': True},
         }
     
     def validate(self, datos):

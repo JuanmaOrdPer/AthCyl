@@ -1,8 +1,8 @@
 // src/components/common/FormField.js
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { TextInput, HelperText } from 'react-native-paper';
-import { formFieldStyles as styles, commonStyles } from '../../styles';
+import { formFieldStyles as styles } from '../../styles';
 
 /**
  * Componente de campo de formulario reutilizable
@@ -39,11 +39,5 @@ const FormField = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 12,
-  },
-});
 
 export default React.memo(FormField);

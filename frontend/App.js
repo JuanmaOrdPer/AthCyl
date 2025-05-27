@@ -42,13 +42,14 @@ if (!global.atob) {
     return output;
   };
 }
+
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { View, Text } from 'react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import { theme } from './src/styles/theme';
+import { theme } from './src/styles';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Componente de carga inicial
@@ -65,10 +66,7 @@ export default function App() {
   const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
-    console.log('App montada');
-    // Simular carga inicial
     const timer = setTimeout(() => {
-      console.log('Tiempo de carga completado');
       setIsLoading(false);
     }, 1000);
 
@@ -92,10 +90,7 @@ export default function App() {
     <ErrorBoundary>
       <PaperProvider theme={theme}>
         <AuthProvider>
-          <NavigationContainer 
-            onReady={() => console.log('Navegación lista')}
-            onStateChange={(state) => console.log('Nuevo estado de navegación:', state)}
-          >
+          <NavigationContainer>
             <AppNavigator />
           </NavigationContainer>
         </AuthProvider>

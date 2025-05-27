@@ -1,12 +1,51 @@
 // src/styles/index.js
 // Este archivo facilita la importación de múltiples estilos
 
-// Sistema de diseño y tema
-export { theme } from './theme.js';
-export { appTheme } from './theme.js';
+import theme, { colors, shadows } from './theme';
 
-// Estilos comunes
-export { default as commonStyles } from './common.styles';
+// Estilos comunes que se pueden reutilizar en toda la aplicación
+export const commonStyles = {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  contentContainer: {
+    padding: 16,
+  },
+  card: {
+    marginVertical: 8,
+    marginHorizontal: 16,
+    borderRadius: theme.roundness,
+    ...shadows.small,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spaceBetween: {
+    justifyContent: 'space-between',
+  },
+  textInput: {
+    marginVertical: 8,
+    backgroundColor: colors.surface,
+    borderRadius: theme.roundness,
+    padding: 12,
+  },
+  button: {
+    marginVertical: 8,
+    borderRadius: theme.roundness,
+    padding: 12,
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: 12,
+    marginTop: 4,
+  },
+};
 
 // Componentes
 export { default as achievementCardStyles } from './components/AchievementCard.styles';
@@ -37,3 +76,9 @@ export { default as profileScreenStyles } from './screens/main/ProfileScreen.sty
 export { default as statsScreenStyles } from './screens/main/StatsScreen.styles';
 export { default as trainingDetailScreenStyles } from './screens/main/TrainingDetailScreen.styles';
 export { default as trainingsScreenStyles } from './screens/main/TrainingsScreen.styles';
+
+// Exportar tema y utilidades
+export { theme, colors, shadows };
+
+// Exportar estilos comunes como default
+export default commonStyles;

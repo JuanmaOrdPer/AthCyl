@@ -22,3 +22,7 @@ export const appTheme = {
 
 // Exportar el tema personalizado
 export { theme };
+
+// Re-exportar todo desde el módulo theme/index.js
+export * from './theme/index';
+export { default } from './theme/index';

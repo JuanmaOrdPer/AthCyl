@@ -31,7 +31,8 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
 # ADVERTENCIA: No ejecutar con debug activado en producción
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+# Hosts permitidos
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.7']
 
 # Aplicaciones
 INSTALLED_APPS = [
@@ -159,8 +160,8 @@ REST_FRAMEWORK = {
 
 # Configuración de JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),      # 1 día para desarrollo
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # 1 semana para desarrollo
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
@@ -180,7 +181,7 @@ SIMPLE_JWT = {
 }
 
 # Configuración de CORS (para desarrollo)
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:19006",  # Expo Web
@@ -188,6 +189,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",   # React en desarrollo
     "exp://localhost:19000",   # Expo Go
     "http://10.0.2.2:19006",   # Android Emulator
+    "http://192.168.0.7:19006", # Tu IP local
+    "http://192.168.0.7:19000", # Para Expo Web
 ]
 
 # Configuración de logging
