@@ -3,14 +3,16 @@ Serializadores para el modelo de Usuario.
 
 Este módulo define los serializadores necesarios para:
 - Gestión general de usuarios (creación, actualización, etc.)
-- Inicio de sesión
 - Registro de nuevos usuarios
+- Perfil de usuario
 
 Autor: Juan Manuel Ordás Periscal
 Fecha: Mayo 2025
 """
 
 from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import get_user_model
 from .models import User
 
 class UserSerializer(serializers.ModelSerializer):
@@ -21,154 +23,263 @@ class UserSerializer(serializers.ModelSerializer):
     de contraseñas (solo escritura, nunca lectura).
     """
     
-    password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
+    password = serializers.CharField(
+        write_only=True, 
+        required=False, 
+        style={'input_type': 'password'},
+        help_text="Dejar vacío para mantener la contraseña actual"
+    )
     profile_picture = serializers.ImageField(required=False, allow_null=True)
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'password', 'first_name', 'last_name', 
-                 'height', 'weight', 'birth_date', 'profile_picture', 'date_joined']
-        read_only_fields = ['id', 'email', 'username', 'date_joined']
+        fields = [
+            'id', 'email', 'username', 'password', 'first_name', 'last_name', 
+            'height', 'weight', 'birth_date', 'profile_picture', 'date_joined',
+            'is_active'
+        ]
+        read_only_fields = ['id', 'date_joined']
         extra_kwargs = {
+            'email': {'required': True},
+            'username': {'required': True},
             'height': {'required': False, 'allow_null': True},
             'weight': {'required': False, 'allow_null': True},
             'birth_date': {'required': False, 'allow_null': True},
+            'first_name': {'required': False, 'allow_blank': True},
+            'last_name': {'required': False, 'allow_blank': True},
         }
     
-    def create(self, datos_validados):
+    def validate_password(self, value):
         """
-        Crea un nuevo usuario con contraseña cifrada.
-        
-        Args:
-            datos_validados: Datos del usuario validados por el serializador
-            
-        Returns:
-            Objeto Usuario creado
+        Valida la contraseña usando los validadores de Django
         """
-        contrasena = datos_validados.pop('password', None)
-        usuario = User.objects.create_user(**datos_validados)
-        
-        if contrasena:
-            usuario.set_password(contrasena)
-            usuario.save()
-            
-        return usuario
+        if value:
+            validate_password(value)
+        return value
     
-    def update(self, instancia, datos_validados):
+    def create(self, validated_data):
+        """
+        Crea un nuevo usuario con contraseña cifrada usando el sistema de Django.
+        """
+        password = validated_data.pop('password', None)
+        
+        # Crear usuario usando el manager de Django
+        user = User.objects.create_user(**validated_data)
+        
+        # Establecer contraseña si se proporcionó
+        if password:
+            user.set_password(password)
+            user.save()
+            
+        return user
+    
+    def update(self, instance, validated_data):
         """
         Actualiza un usuario existente.
         
         Args:
-            instancia: Usuario a actualizar
-            datos_validados: Nuevos datos validados
+            instance: Usuario a actualizar
+            validated_data: Nuevos datos validados
             
         Returns:
             Usuario actualizado
         """
-        # Manejar la imagen de perfil por separado
-        foto_perfil = datos_validados.pop('profile_picture', None)
-        if foto_perfil is not None:  # None significa mantener el valor actual
-            instancia.profile_picture = foto_perfil
-            
-        # Actualizar los demás campos
-        for atributo, valor in datos_validados.items():
-            if hasattr(instancia, atributo):
-                setattr(instancia, atributo, valor)
+        password = validated_data.pop('password', None)
         
-        # Manejar la contraseña (si se proporciona)
-        contrasena = datos_validados.get('password')
-        if contrasena:
-            instancia.set_password(contrasena)
+        # Actualizar campos normales
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         
-        instancia.save()
-        return instancia
+        # Manejar la contraseña por separado
+        if password:
+            instance.set_password(password)
+        
+        instance.save()
+        return instance
 
-class LoginSerializer(serializers.Serializer):
-    """
-    Serializador para el inicio de sesión.
-    
-    Recoge nombre de usuario y contraseña para autenticar al usuario.
-    """
-    
-    username = serializers.CharField(
-        label="Nombre de usuario",
-        max_length=150,
-        required=True
-    )
-    password = serializers.CharField(
-        label="Contraseña",
-        style={'input_type': 'password'},
-        trim_whitespace=False,
-        required=True
-    )
-
-class RegistroSerializer(serializers.ModelSerializer):
+class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializador para el registro de nuevos usuarios.
     
-    Incluye validación de coincidencia de contraseñas.
+    Incluye validación de coincidencia de contraseñas y validaciones adicionales.
     """
     
     password = serializers.CharField(
         write_only=True, 
         required=True, 
         style={'input_type': 'password'},
-        label="Contraseña"
+        help_text="Mínimo 8 caracteres"
     )
     password_confirm = serializers.CharField(
         write_only=True, 
         required=True, 
         style={'input_type': 'password'},
-        label="Confirmar contraseña"
+        help_text="Debe coincidir con la contraseña"
     )
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
+        fields = [
+            'username', 'email', 'password', 'password_confirm', 
+            'first_name', 'last_name'
+        ]
         extra_kwargs = {
             'email': {
-                'label': 'Correo electrónico',
                 'required': True,
-                'allow_blank': False
+                'help_text': 'Dirección de correo electrónico válida'
             },
             'username': {
-                'label': 'Nombre de usuario',
                 'required': True,
-                'allow_blank': False,
-                'validators': []  # Deshabilitamos validadores para manejar manualmente
+                'help_text': 'Nombre de usuario único'
             },
-            'first_name': {'label': 'Nombre', 'required': False, 'allow_blank': True},
-            'last_name': {'label': 'Apellidos', 'required': False, 'allow_blank': True},
+            'first_name': {
+                'required': False, 
+                'allow_blank': True,
+                'help_text': 'Nombre (opcional)'
+            },
+            'last_name': {
+                'required': False, 
+                'allow_blank': True,
+                'help_text': 'Apellidos (opcional)'
+            },
         }
     
-    def validate(self, datos):
+    def validate_email(self, value):
         """
-        Valida que las contraseñas coincidan.
-        
-        Args:
-            datos: Datos a validar
-            
-        Returns:
-            Datos validados
-            
-        Raises:
-            ValidationError: Si las contraseñas no coinciden
+        Valida que el email no esté ya en uso
         """
-        if datos['password'] != datos['password_confirm']:
-            raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
-        return datos
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "Ya existe un usuario con este correo electrónico."
+            )
+        return value
     
-    def create(self, datos_validados):
+    def validate_username(self, value):
         """
-        Crea un nuevo usuario a partir de los datos de registro.
+        Valida que el username no esté ya en uso
+        """
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError(
+                "Ya existe un usuario con este nombre de usuario."
+            )
+        return value
+    
+    def validate_password(self, value):
+        """
+        Valida la contraseña usando los validadores de Django
+        """
+        validate_password(value)
+        return value
+    
+    def validate(self, attrs):
+        """
+        Valida que las contraseñas coincidan
+        """
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError({
+                "password_confirm": "Las contraseñas no coinciden."
+            })
+        return attrs
+    
+    def create(self, validated_data):
+        """
+        Crea un nuevo usuario a partir de los datos de registro
+        """
+        # Eliminar la confirmación de contraseña
+        validated_data.pop('password_confirm')
         
-        Args:
-            datos_validados: Datos validados del formulario de registro
-            
-        Returns:
-            Usuario creado
+        # Crear el usuario usando el manager de Django
+        user = User.objects.create_user(**validated_data)
+        
+        return user
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializador para el perfil completo del usuario.
+    
+    Incluye todos los campos del usuario incluyendo los específicos
+    de la aplicación deportiva como altura y peso.
+    """
+    
+    password = serializers.CharField(
+        write_only=True, 
+        required=False, 
+        style={'input_type': 'password'},
+        help_text="Nueva contraseña (opcional)"
+    )
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'username', 'password', 'first_name', 'last_name', 
+            'height', 'weight', 'birth_date', 'profile_picture', 'date_joined',
+            'is_active'
+        ]
+        read_only_fields = ['id', 'email', 'username', 'date_joined']
+        extra_kwargs = {
+            'height': {
+                'help_text': 'Altura en centímetros',
+                'min_value': 100,
+                'max_value': 250
+            },
+            'weight': {
+                'help_text': 'Peso en kilogramos',
+                'min_value': 30,
+                'max_value': 200
+            },
+            'birth_date': {
+                'help_text': 'Fecha de nacimiento (YYYY-MM-DD)'
+            },
+        }
+    
+    def validate_height(self, value):
+        """Valida que la altura esté en un rango razonable"""
+        if value is not None and (value < 100 or value > 250):
+            raise serializers.ValidationError(
+                "La altura debe estar entre 100 y 250 centímetros."
+            )
+        return value
+    
+    def validate_weight(self, value):
+        """Valida que el peso esté en un rango razonable"""
+        if value is not None and (value < 30 or value > 200):
+            raise serializers.ValidationError(
+                "El peso debe estar entre 30 y 200 kilogramos."
+            )
+        return value
+    
+    def validate_password(self, value):
+        """Valida la nueva contraseña si se proporciona"""
+        if value:
+            validate_password(value)
+        return value
+    
+    def update(self, instance, validated_data):
         """
-        # Eliminar la confirmación de contraseña, ya que no es un campo del modelo
-        datos_validados.pop('password_confirm')
-        # Crear el usuario utilizando el método del gestor personalizado
-        return User.objects.create_user(**datos_validados)
+        Actualiza el perfil del usuario
+        """
+        password = validated_data.pop('password', None)
+        
+        # Actualizar campos normales
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Actualizar contraseña si se proporcionó
+        if password:
+            instance.set_password(password)
+        
+        instance.save()
+        return instance
+
+class UserBasicSerializer(serializers.ModelSerializer):
+    """
+    Serializador básico para mostrar información pública del usuario.
+    
+    Usado para mostrar información de usuarios en listas o referencias
+    sin exponer datos sensibles.
+    """
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'profile_picture']
+        read_only_fields = fields

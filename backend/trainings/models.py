@@ -18,9 +18,9 @@ import os
 
 def gpx_file_path(instance, filename):
     """Genera una ruta única para los archivos GPX/TCX"""
-    ext = filename.split('.')[-1]
+    ext = filename.split('.')[-1].lower()
     filename = f"{uuid.uuid4()}.{ext}"
-    return os.path.join('trainings/gpx', filename)
+    return os.path.join('entrenamientos/archivos', filename)
 
 class Training(models.Model):
     """
@@ -42,51 +42,68 @@ class Training(models.Model):
     ]
     
     # Relación con el usuario (cuando se elimina un usuario, se eliminan sus entrenamientos)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trainings', verbose_name="Usuario")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trainings', verbose_name="Usuario", db_column="usuario")
     
     # Datos básicos
-    title = models.CharField(max_length=100, verbose_name="Título")
-    description = models.TextField(blank=True, null=True, verbose_name="Descripción")
-    activity_type = models.CharField(max_length=20, choices=ACTIVITY_CHOICES, default='running', verbose_name="Tipo de actividad")
+    title = models.CharField(max_length=100, verbose_name="Título", db_column="título")
+    description = models.TextField(blank=True, null=True, verbose_name="Descripción", db_column="descripción")
+    activity_type = models.CharField(max_length=20, choices=ACTIVITY_CHOICES, default='running', verbose_name="Tipo de actividad", db_column="tipo_de_actividad")
     
     # Archivo GPX/TCX subido por el usuario
-    gpx_file = models.FileField(upload_to=gpx_file_path, blank=True, null=True, verbose_name="Archivo GPX/TCX")
+    gpx_file = models.FileField(upload_to=gpx_file_path, blank=True, null=True, verbose_name="Archivo GPX/TCX", db_column="archivo_gpx_tc")
     
     # Información temporal del entrenamiento
-    date = models.DateField(blank=True, null=True, verbose_name="Fecha")
-    start_time = models.TimeField(blank=True, null=True, verbose_name="Hora de inicio")
-    duration = models.DurationField(blank=True, null=True, verbose_name="Duración")
+    date = models.DateField(blank=True, null=True, verbose_name="Fecha", db_column="fecha")
+    start_time = models.TimeField(blank=True, null=True, verbose_name="Hora de inicio", db_column="hora_de_inicio")
+    duration = models.DurationField(blank=True, null=True, verbose_name="Duración", db_column="duración")
     
     # Métricas básicas
-    distance = models.FloatField(blank=True, null=True, help_text="Distancia en kilómetros", verbose_name="Distancia")
+    distance = models.FloatField(blank=True, null=True, help_text="Distancia en kilómetros", verbose_name="Distancia", db_column="distancia")
     
     # Métricas de rendimiento
-    avg_speed = models.FloatField(blank=True, null=True, help_text="Velocidad promedio en km/h", verbose_name="Velocidad promedio")
-    max_speed = models.FloatField(blank=True, null=True, help_text="Velocidad máxima en km/h", verbose_name="Velocidad máxima")
-    avg_heart_rate = models.FloatField(blank=True, null=True, help_text="Ritmo cardíaco promedio", verbose_name="Ritmo cardíaco promedio")
+    avg_speed = models.FloatField(blank=True, null=True, help_text="Velocidad promedio en km/h", verbose_name="Velocidad promedio", db_column="velocidad_promedio")
+    max_speed = models.FloatField(blank=True, null=True, help_text="Velocidad máxima en km/h", verbose_name="Velocidad máxima", db_column="velocidad_máxima")
+    avg_heart_rate = models.FloatField(blank=True, null=True, help_text="Ritmo cardíaco promedio", verbose_name="Ritmo cardíaco promedio", db_column="ritmo_cardíaco_promedio")
     max_heart_rate = models.FloatField(blank=True, null=True, help_text="Ritmo cardíaco máximo", verbose_name="Ritmo cardíaco máximo")
     elevation_gain = models.FloatField(blank=True, null=True, help_text="Ganancia de elevación en metros", verbose_name="Ganancia de elevación")
     calories = models.IntegerField(blank=True, null=True, help_text="Calorías quemadas", verbose_name="Calorías quemadas")
     
     # Nuevos campos para datos adicionales de GPX/TCX
-    avg_cadence = models.FloatField(blank=True, null=True, help_text="Cadencia promedio (pasos/min)", verbose_name="Cadencia promedio")
-    max_cadence = models.FloatField(blank=True, null=True, help_text="Cadencia máxima (pasos/min)", verbose_name="Cadencia máxima")
-    avg_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura promedio (°C)", verbose_name="Temperatura promedio")
-    min_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura mínima (°C)", verbose_name="Temperatura mínima")
-    max_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura máxima (°C)", verbose_name="Temperatura máxima")
+    avg_cadence = models.FloatField(blank=True, null=True, help_text="Cadencia promedio (pasos/min)", verbose_name="Cadencia promedio", db_column="cadencia_promedio")
+    max_cadence = models.FloatField(blank=True, null=True, help_text="Cadencia máxima (pasos/min)", verbose_name="Cadencia máxima", db_column="cadencia_máxima")
+    avg_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura promedio (°C)", verbose_name="Temperatura promedio", db_column="temperatura_promedio")
+    min_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura mínima (°C)", verbose_name="Temperatura mínima", db_column="temperatura_mínima")
+    max_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura máxima (°C)", verbose_name="Temperatura máxima", db_column="temperatura_máxima")
+    
+    # Campo para indicar si el procesamiento del archivo fue exitoso
+    file_processed = models.BooleanField(default=False, verbose_name="Archivo procesado", db_column="archivo_procesado")
+    processing_error = models.TextField(blank=True, null=True, verbose_name="Error de procesamiento", db_column="error_de_procesamiento")
     
     # Datos de auditoría
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación", db_column="fecha_de_creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización", db_column="fecha_de_actualización")
     
     def __str__(self):
         """Devuelve una representación en texto del objeto"""
         return f"{self.title} - {self.date} ({self.user.username})"
     
+    def save(self, *args, **kwargs):
+        """Sobrescribe el método save para validar datos antes de guardar"""
+        # Si no hay título, generar uno automático
+        if not self.title:
+            tipo_actividad = self.get_activity_type_display()
+            if self.date:
+                self.title = f"{tipo_actividad} - {self.date.strftime('%d/%m/%Y')}"
+            else:
+                self.title = f"{tipo_actividad}"
+        
+        super().save(*args, **kwargs)
+    
     class Meta:
         """Meta opciones del modelo"""
         verbose_name = "Entrenamiento"
         verbose_name_plural = "Entrenamientos"
+        db_table = "entrenamientos"  # Nombre de tabla en español
         ordering = ['-date', '-start_time']  # Ordenar por fecha descendente y luego por hora
 
 class TrackPoint(models.Model):
@@ -113,6 +130,7 @@ class TrackPoint(models.Model):
     class Meta:
         verbose_name = "Punto de ruta"
         verbose_name_plural = "Puntos de ruta"
+        db_table = "puntos_ruta"  # Nombre de tabla en español
         ordering = ['time']  # Ordenamos por tiempo para mantener la secuencia correcta
 
 class Goal(models.Model):
@@ -148,7 +166,7 @@ class Goal(models.Model):
     target_value = models.FloatField(help_text="Valor objetivo (km, minutos, etc.)", verbose_name="Valor objetivo")
     period = models.CharField(max_length=20, choices=PERIOD_CHOICES, default='weekly', verbose_name="Periodo")
     
-    start_date = models.DateField(verbose_name="Fecha de inicio", auto_now_add=False)
+    start_date = models.DateField(verbose_name="Fecha de inicio")
     end_date = models.DateField(blank=True, null=True, verbose_name="Fecha de finalización")
     
     is_active = models.BooleanField(default=True, verbose_name="Activo")
@@ -164,3 +182,4 @@ class Goal(models.Model):
         ordering = ['-created_at']
         verbose_name = "Objetivo"
         verbose_name_plural = "Objetivos"
+        db_table = "objetivos"  # Nombre de tabla en español

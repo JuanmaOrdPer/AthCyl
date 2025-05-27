@@ -1,3 +1,4 @@
+
 # ======== Dependencias principales de Django ========
 Django==4.2.7                     # Framework web principal para el backend
 djangorestframework==3.14.0       # Biblioteca para crear APIs RESTful en Django
@@ -9,7 +10,6 @@ django-extensions==3.2.3          # Extensiones útiles para Django (shell_plus,
 Werkzeug==2.3.7                   # Utilidades web usadas por django-extensions
 
 # ======== Base de datos ========
-psycopg2-binary==2.9.9           # Adaptador PostgreSQL para Django (versión precompilada)
 
 # ======== Procesamiento de datos (optimizado para Python 3.13) ========
 gpxpy==1.5.0                     # Biblioteca para leer y analizar archivos GPX de rutas
@@ -36,3 +36,4 @@ django-debug-toolbar==4.2.0      # Herramientas de debug para desarrollo
 # ======== Compatibilidad y seguridad ========
 cryptography>=41.0.7             # Biblioteca de criptografía para JWT (optimizado)
 urllib3==2.0.7                   # Cliente HTTP usado por varias dependencias
+

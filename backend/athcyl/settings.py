@@ -25,16 +25,16 @@ load_dotenv()
 # Ruta base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ADVERTENCIA: Mantenga la clave secreta usada en producción en secreto
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
+# CONFIGURACIÓN DE SEGURIDAD
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
 
 # ADVERTENCIA: No ejecutar con debug activado en producción
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # Hosts permitidos
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.7']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-# Aplicaciones
+# APLICACIONES
 INSTALLED_APPS = [
     # Aplicaciones de Django
     'django.contrib.admin',          # Sitio de administración
@@ -46,10 +46,9 @@ INSTALLED_APPS = [
     
     # Aplicaciones de terceros
     'rest_framework',                # Framework REST API
-    'rest_framework.authtoken',      # Autenticación por token
+    'rest_framework_simplejwt',      # Autenticación JWT
     'django_extensions',             # Utilidades extra para desarrollo
     'corsheaders',                   # Soporte para CORS
-    'sslserver',                     # Servidor de desarrollo con SSL
     
     # Aplicaciones propias
     'users',                         # Gestión de usuarios
@@ -57,7 +56,7 @@ INSTALLED_APPS = [
     'stats',                         # Estadísticas y análisis
 ]
 
-# Middleware
+# MIDDLEWARE
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -74,7 +73,7 @@ ROOT_URLCONF = 'athcyl.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -89,32 +88,35 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'athcyl.wsgi.application'
 
-# Base de datos
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# CONFIGURACIÓN DE BASE DE DATOS
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME', 'athcyl_db'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
+        'USER': os.getenv('DB_USER', 'athcyl_user'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'athcyl_user'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
             'client_encoding': 'UTF8',
         },
+        'CONN_MAX_AGE': 60,  # Reutilizar conexiones por 60 segundos
     }
 }
 
+# MODELO DE USUARIO PERSONALIZADO
 AUTH_USER_MODEL = 'users.User'
 
-# Validadores de contraseña
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
+# VALIDADORES DE CONTRASEÑA
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -124,28 +126,31 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internacionalización
-# https://docs.djangoproject.com/en/4.2/topics/i18n/
+# INTERNACIONALIZACIÓN
 LANGUAGE_CODE = 'es-es'         # Idioma español
 TIME_ZONE = 'Europe/Madrid'     # Zona horaria de España
 USE_I18N = True                 # Usar internacionalización
 USE_TZ = True                   # Usar zonas horarias
 
-# Archivos estáticos (CSS, JavaScript, imágenes)
+# ARCHIVOS ESTÁTICOS
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    BASE_DIR / 'static',
 ]
 
-# Archivos multimedia (subidos por usuarios)
+# ARCHIVOS MULTIMEDIA
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
-# Tipo de clave primaria por defecto
+# Configuración para subida de archivos
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
+
+# TIPO DE CLAVE PRIMARIA POR DEFECTO
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Configuración de REST Framework y SimpleJWT
+# CONFIGURACIÓN DE REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -155,45 +160,76 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 20,
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
-# Configuración de JWT
+# CONFIGURACIÓN DE JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),      # 1 día para desarrollo
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # 1 semana para desarrollo
-    'ROTATE_REFRESH_TOKENS': False,
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': False,
+    'UPDATE_LAST_LOGIN': True,
 
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
 
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
-    'JTI_CLAIM': 'jti'
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+    'JTI_CLAIM': 'jti',
+
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-# Configuración de CORS (para desarrollo)
-CORS_ALLOW_ALL_ORIGINS = True  # Solo para desarrollo
+# CONFIGURACIÓN DE CORS
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:19006",  # Expo Web
-    "http://localhost:19000",  # Expo DevTools
-    "http://localhost:3000",   # React en desarrollo
-    "exp://localhost:19000",   # Expo Go
-    "http://10.0.2.2:19006",   # Android Emulator
-    "http://192.168.0.7:19006", # Tu IP local
-    "http://192.168.0.7:19000", # Para Expo Web
+CORS_ALLOWED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS', 
+    'http://localhost:3000,http://localhost:8081'
+).split(',')
+
+# Para desarrollo, permitir todos los orígenes
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# Headers permitidos para CORS
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
-# Configuración de logging
+# CONFIGURACIÓN DE LOGGING
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -209,28 +245,36 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',  # Cambiado de INFO a DEBUG
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'simple'
         },
         'file': {
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'athcyl.log',
+            'maxBytes': 1024*1024*10,  # 10 MB
+            'backupCount': 5,
             'formatter': 'verbose'
         },
         'error_file': {
             'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'error.log'),
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'errors.log',
+            'maxBytes': 1024*1024*10,  # 10 MB
+            'backupCount': 5,
             'formatter': 'verbose'
         },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
         'trainings': {
             'handlers': ['console', 'file', 'error_file'],
@@ -249,3 +293,35 @@ LOGGING = {
         },
     },
 }
+
+# Crear directorio de logs si no existe
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
+# CONFIGURACIÓN DE SEGURIDAD ADICIONAL
+if not DEBUG:
+    # Configuración de seguridad para producción
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
+# CONFIGURACIÓN DE CACHE
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'athcyl-cache',
+        'TIMEOUT': 300,  # 5 minutos
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
+
+# CONFIGURACIÓN DE SESIONES
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 86400  # 24 horas
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False

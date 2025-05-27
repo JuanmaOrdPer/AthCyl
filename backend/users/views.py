@@ -3,8 +3,8 @@ Vistas para la gestión de usuarios.
 
 Este módulo define las vistas API para:
 - Registro de usuarios
-- Inicio y cierre de sesión
 - Gestión del perfil de usuario
+- Información del usuario actual
 
 Autor: Juan Manuel Ordás Periscal
 Fecha: Mayo 2025
@@ -13,19 +13,26 @@ Fecha: Mayo 2025
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate, login, logout
-from django.shortcuts import get_object_or_404
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
+import logging
 
 from .models import User
-from .serializers import UserSerializer, LoginSerializer, RegistroSerializer
+from .serializers import (
+    UserSerializer, 
+    UserRegistrationSerializer, 
+    UserProfileSerializer,
+    UserBasicSerializer
+)
+
+logger = logging.getLogger(__name__)
 
 class UserViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar usuarios.
     
     Proporciona endpoints para todas las operaciones CRUD relacionadas
-    con usuarios, además de acciones personalizadas como login y registro.
+    con usuarios, además de acciones personalizadas como registro y perfil.
     """
     
     queryset = User.objects.all()
@@ -35,172 +42,284 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Define los permisos basados en la acción.
         
-        Para acciones públicas como crear, login o registro, permite acceso
-        a cualquier usuario (incluso no autenticados). Para el resto de acciones,
-        requiere autenticación.
+        Para el registro permite acceso público, para el resto requiere autenticación.
         """
-        if self.action in ['create', 'login', 'register']:
+        if self.action in ['create', 'register']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     
     def get_serializer_class(self):
         """
         Selecciona el serializador apropiado según la acción.
-        
-        Diferentes acciones pueden requerir diferentes serializadores.
         """
-        if self.action == 'login':
-            return LoginSerializer
-        elif self.action == 'register':
-            return RegistroSerializer
+        if self.action == 'register':
+            return UserRegistrationSerializer
+        elif self.action in ['me', 'update_profile']:
+            return UserProfileSerializer
+        elif self.action == 'list':
+            return UserBasicSerializer
         return UserSerializer
-        
+    
+    def get_queryset(self):
+        """
+        Limita el queryset según los permisos del usuario.
+        """
+        if self.action == 'list':
+            # Para listar usuarios, solo mostrar usuarios activos
+            return User.objects.filter(is_active=True)
+        return User.objects.all()
+    
     def get_object(self):
         """
         Obtiene el objeto usuario para operaciones que lo requieren.
-        
-        Para la acción 'me' o para actualizaciones, devuelve el usuario actual.
-        Para otras acciones, comportamiento normal.
         """
-        if self.action == 'me' or self.request.method in ['PATCH', 'PUT']:
+        if self.action in ['me', 'update_profile']:
             return self.request.user
         return super().get_object()
-        
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Recupera un usuario específico.
-        
-        La implementación estándar de recuperación de un usuario.
-        """
-        instancia = self.get_object()
-        serializer = self.get_serializer(instancia)
-        return Response(serializer.data)
-        
-    def update(self, request, *args, **kwargs):
-        """
-        Actualiza un usuario.
-        
-        Solo permite actualizar el propio perfil del usuario, no otros perfiles.
-        """
-        # Solo permitir actualizar el propio perfil
-        if int(kwargs.get('pk')) != request.user.id:
-            return Response(
-                {'error': 'No tienes permiso para actualizar este perfil'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-            
-        respuesta = super().update(request, *args, **kwargs)
-        return Response(respuesta.data)
     
-    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
-    def login(self, request):
+    def create(self, request, *args, **kwargs):
         """
-        Acción personalizada para iniciar sesión.
+        Crea un nuevo usuario (registro).
         
-        Valida las credenciales (usuario y contraseña) y devuelve un token de autenticación si son correctas.
+        Este método redirige al método register para mantener consistencia.
         """
-        serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {'error': 'Datos de inicio de sesión inválidos', 'detalles': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        username = serializer.validated_data['username']
-        password = serializer.validated_data['password']
-        
-        # Autenticar al usuario usando el nombre de usuario
-        user = authenticate(request, username=username, password=password)
-        
-        if user is None:
-            return Response(
-                {'error': 'Nombre de usuario o contraseña incorrectos'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-            
-        # Iniciar sesión para crear la sesión del usuario
-        login(request, user)
-        
-        # Obtener o crear token de autenticación
-        token, created = Token.objects.get_or_create(user=user)
-        
-        # Devolver datos del usuario y token
-        user_serializer = UserSerializer(user)
-        return Response({
-            'token': token.key,
-            'user': user_serializer.data
-        })
+        return self.register(request, *args, **kwargs)
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def register(self, request):
         """
-        Acción personalizada para registrar un nuevo usuario.
-        
-        Valida los datos de registro y crea un nuevo usuario si son correctos.
+        Registra un nuevo usuario y devuelve tokens JWT.
         """
-        # Validar datos de registro
-        serializer = RegistroSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {'error': 'Datos de registro inválidos', 'detalles': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
+        logger.info(f"Intento de registro con datos: {request.data}")
+        
         try:
-            # Crear y guardar el usuario explícitamente
-            usuario = serializer.save()
+            # Validar datos de registro
+            serializer = UserRegistrationSerializer(data=request.data)
+            if not serializer.is_valid():
+                logger.warning(f"Datos de registro inválidos: {serializer.errors}")
+                return Response(
+                    {
+                        'error': 'Datos de registro inválidos',
+                        'details': serializer.errors
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            # Forzar la guardada del usuario en la base de datos
-            usuario.save()
+            # Crear usuario
+            user = serializer.save()
+            logger.info(f"Usuario creado exitosamente: {user.email}")
             
-            # Generar token para inicio de sesión automático
-            token = Token.objects.create(user=usuario)
+            # Generar tokens JWT
+            refresh = RefreshToken.for_user(user)
+            access_token = refresh.access_token
             
-            # Devolver respuesta exitosa
+            # Serializar datos del usuario
+            user_serializer = UserProfileSerializer(user)
+            
             return Response(
                 {
-                    'usuario': UserSerializer(usuario).data,
-                    'token': token.key,
-                    'mensaje': 'Usuario registrado correctamente'
+                    'message': 'Usuario registrado exitosamente',
+                    'user': user_serializer.data,
+                    'tokens': {
+                        'access': str(access_token),
+                        'refresh': str(refresh),
+                    }
                 },
                 status=status.HTTP_201_CREATED
             )
             
         except Exception as e:
-            print(f"Error durante el registro: {str(e)}")
+            logger.error(f"Error durante el registro: {str(e)}", exc_info=True)
             return Response(
-                {'error': f'Error al registrar el usuario: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
-    @action(detail=False, methods=['post'])
-    def logout(self, request):
-        """
-        Cierra la sesión del usuario actual.
-        
-        Elimina la sesión de Django y opcionalmente el token de autenticación.
-        """
-        try:
-            # Eliminar token de autenticación (opcional)
-            Token.objects.filter(user=request.user).delete()
-            
-            # Cerrar sesión en Django
-            logout(request)
-            
-            return Response({'mensaje': 'Sesión cerrada correctamente'})
-        except Exception as e:
-            print(f"Error al cerrar sesión: {e}")
-            return Response(
-                {'error': 'Hubo un problema al cerrar la sesión'},
+                {
+                    'error': 'Error interno del servidor durante el registro',
+                    'message': 'Por favor, inténtalo de nuevo más tarde.'
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     @action(detail=False, methods=['get'])
     def me(self, request):
         """
-        Devuelve información del usuario actual.
-        
-        Útil para obtener los datos del perfil del usuario autenticado.
+        Devuelve información completa del usuario actual.
         """
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
+        try:
+            serializer = UserProfileSerializer(request.user)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error obteniendo perfil de usuario: {e}")
+            return Response(
+                {'error': 'Error obteniendo información del usuario'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['patch', 'put'])
+    def update_profile(self, request):
+        """
+        Actualiza el perfil del usuario actual.
+        """
+        try:
+            # Obtener el usuario actual
+            user = request.user
+            
+            # Determinar si es actualización parcial o completa
+            partial = request.method == 'PATCH'
+            
+            # Crear serializador
+            serializer = UserProfileSerializer(
+                user, 
+                data=request.data, 
+                partial=partial
+            )
+            
+            if not serializer.is_valid():
+                return Response(
+                    {
+                        'error': 'Datos de perfil inválidos',
+                        'details': serializer.errors
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Guardar cambios
+            updated_user = serializer.save()
+            logger.info(f"Perfil actualizado para usuario: {updated_user.email}")
+            
+            # Devolver datos actualizados
+            response_serializer = UserProfileSerializer(updated_user)
+            return Response(
+                {
+                    'message': 'Perfil actualizado exitosamente',
+                    'user': response_serializer.data
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Error actualizando perfil: {e}", exc_info=True)
+            return Response(
+                {'error': 'Error actualizando el perfil'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        """
+        Cambia la contraseña del usuario actual.
+        """
+        try:
+            user = request.user
+            old_password = request.data.get('old_password')
+            new_password = request.data.get('new_password')
+            confirm_password = request.data.get('confirm_password')
+            
+            # Validaciones
+            if not all([old_password, new_password, confirm_password]):
+                return Response(
+                    {'error': 'Todos los campos son requeridos'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if not user.check_password(old_password):
+                return Response(
+                    {'error': 'La contraseña actual es incorrecta'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if new_password != confirm_password:
+                return Response(
+                    {'error': 'Las contraseñas nuevas no coinciden'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validar nueva contraseña
+            from django.contrib.auth.password_validation import validate_password
+            try:
+                validate_password(new_password, user)
+            except Exception as e:
+                return Response(
+                    {'error': f'La nueva contraseña no es válida: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Cambiar contraseña
+            user.set_password(new_password)
+            user.save()
+            
+            logger.info(f"Contraseña cambiada para usuario: {user.email}")
+            
+            return Response(
+                {'message': 'Contraseña cambiada exitosamente'}
+            )
+            
+        except Exception as e:
+            logger.error(f"Error cambiando contraseña: {e}")
+            return Response(
+                {'error': 'Error cambiando la contraseña'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['delete'])
+    def delete_account(self, request):
+        """
+        Desactiva la cuenta del usuario actual.
+        
+        No elimina físicamente la cuenta, solo la desactiva por seguridad.
+        """
+        try:
+            user = request.user
+            password = request.data.get('password')
+            
+            if not password:
+                return Response(
+                    {'error': 'Se requiere la contraseña para eliminar la cuenta'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if not user.check_password(password):
+                return Response(
+                    {'error': 'Contraseña incorrecta'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Desactivar cuenta en lugar de eliminarla
+            user.is_active = False
+            user.save()
+            
+            logger.warning(f"Cuenta desactivada para usuario: {user.email}")
+            
+            return Response(
+                {'message': 'Cuenta desactivada exitosamente'}
+            )
+            
+        except Exception as e:
+            logger.error(f"Error desactivando cuenta: {e}")
+            return Response(
+                {'error': 'Error desactivando la cuenta'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Actualiza un usuario específico (solo administradores).
+        """
+        # Solo permitir a administradores actualizar otros usuarios
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'No tienes permisos para realizar esta acción'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Elimina un usuario específico (solo administradores).
+        """
+        # Solo permitir a administradores eliminar usuarios
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'No tienes permisos para realizar esta acción'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().destroy(request, *args, **kwargs)
