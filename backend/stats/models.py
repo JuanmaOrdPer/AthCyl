@@ -182,8 +182,14 @@ class UserStats(models.Model):
         
         # Actualizar fechas
         if fechas:
-            self.first_training_date = min(fechas)
-            self.last_training_date = max(fechas)
+            # Filtrar fechas nulas antes de calcular min/max
+            fechas_validas = [f for f in fechas if f is not None]
+            if fechas_validas:
+                self.first_training_date = min(fechas_validas)
+                self.last_training_date = max(fechas_validas)
+            else:
+                self.first_training_date = None
+                self.last_training_date = None
         
         self.save()
         print(f"Estadísticas actualizadas correctamente para {self.user.username}.")

@@ -14,6 +14,11 @@ def actualizar_resumenes_actividad(sender, instance, created, **kwargs):
         # Obtenemos la fecha del entrenamiento
         fecha = instance.date
         
+        # Si no hay fecha, no podemos crear un resumen
+        if fecha is None:
+            print(f"[ADVERTENCIA] El entrenamiento {instance.id} no tiene fecha, no se puede crear resumen de actividad")
+            return
+            
         # Actualizamos el resumen diario (lo creamos si no existe)
         resumen_diario, es_nuevo = ActivitySummary.objects.get_or_create(
             user=instance.user,

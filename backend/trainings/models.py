@@ -53,8 +53,8 @@ class Training(models.Model):
     gpx_file = models.FileField(upload_to=gpx_file_path, blank=True, null=True, verbose_name="Archivo GPX/TCX")
     
     # Información temporal del entrenamiento
-    date = models.DateField(verbose_name="Fecha")
-    start_time = models.TimeField(verbose_name="Hora de inicio")
+    date = models.DateField(blank=True, null=True, verbose_name="Fecha")
+    start_time = models.TimeField(blank=True, null=True, verbose_name="Hora de inicio")
     duration = models.DurationField(blank=True, null=True, verbose_name="Duración")
     
     # Métricas básicas
@@ -67,6 +67,13 @@ class Training(models.Model):
     max_heart_rate = models.FloatField(blank=True, null=True, help_text="Ritmo cardíaco máximo", verbose_name="Ritmo cardíaco máximo")
     elevation_gain = models.FloatField(blank=True, null=True, help_text="Ganancia de elevación en metros", verbose_name="Ganancia de elevación")
     calories = models.IntegerField(blank=True, null=True, help_text="Calorías quemadas", verbose_name="Calorías quemadas")
+    
+    # Nuevos campos para datos adicionales de GPX/TCX
+    avg_cadence = models.FloatField(blank=True, null=True, help_text="Cadencia promedio (pasos/min)", verbose_name="Cadencia promedio")
+    max_cadence = models.FloatField(blank=True, null=True, help_text="Cadencia máxima (pasos/min)", verbose_name="Cadencia máxima")
+    avg_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura promedio (°C)", verbose_name="Temperatura promedio")
+    min_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura mínima (°C)", verbose_name="Temperatura mínima")
+    max_temperature = models.FloatField(blank=True, null=True, help_text="Temperatura máxima (°C)", verbose_name="Temperatura máxima")
     
     # Datos de auditoría
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
@@ -97,6 +104,8 @@ class TrackPoint(models.Model):
     time = models.DateTimeField(verbose_name="Tiempo")
     heart_rate = models.IntegerField(blank=True, null=True, verbose_name="Ritmo cardíaco")
     speed = models.FloatField(blank=True, null=True, verbose_name="Velocidad")
+    cadence = models.FloatField(blank=True, null=True, verbose_name="Cadencia", help_text="Cadencia en este punto (pasos/min)")
+    temperature = models.FloatField(blank=True, null=True, verbose_name="Temperatura", help_text="Temperatura ambiente (°C)")
     
     def __str__(self):
         return f"Punto de ruta en {self.time} para {self.training.title}"
@@ -139,7 +148,7 @@ class Goal(models.Model):
     target_value = models.FloatField(help_text="Valor objetivo (km, minutos, etc.)", verbose_name="Valor objetivo")
     period = models.CharField(max_length=20, choices=PERIOD_CHOICES, default='weekly', verbose_name="Periodo")
     
-    start_date = models.DateField(verbose_name="Fecha de inicio")
+    start_date = models.DateField(verbose_name="Fecha de inicio", auto_now_add=False)
     end_date = models.DateField(blank=True, null=True, verbose_name="Fecha de finalización")
     
     is_active = models.BooleanField(default=True, verbose_name="Activo")
@@ -149,8 +158,6 @@ class Goal(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
 
     def __str__(self):
-        verbose_name = "Objetivo"
-        verbose_name_plural = "Objetivos"
         return f"{self.title} - {self.get_goal_type_display()} ({self.user.username})"
     
     class Meta:
