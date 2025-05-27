@@ -130,6 +130,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'es-es'         # Idioma español
 TIME_ZONE = 'Europe/Madrid'     # Zona horaria de España
 USE_I18N = True                 # Usar internacionalización
+USE_L10N = True                 # Usar localización
 USE_TZ = True                   # Usar zonas horarias
 
 # ARCHIVOS ESTÁTICOS
@@ -146,6 +147,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Configuración para subida de archivos
 FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
+FILE_UPLOAD_PERMISSIONS = 0o644  # Permisos de archivos subido
 
 # TIPO DE CLAVE PRIMARIA POR DEFECTO
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

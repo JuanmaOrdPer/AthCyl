@@ -3,12 +3,15 @@ from django.dispatch import receiver
 from trainings.models import Training
 from .models import ActivitySummary
 import datetime
+import logging
+
+logger = logging.getLogger('stats')
 
 @receiver(post_save, sender=Training)
 def actualizar_resumenes_actividad(sender, instance, created, **kwargs):
     """
     Actualiza los resúmenes de actividad diaria cuando se guarda un entrenamiento.
-    Esto nos permite tener estadísticas agrupadas por días.
+    VERSIÓN CORREGIDA - Maneja diferentes tipos de fecha correctamente.
     """
     try:
         # Obtenemos la fecha del entrenamiento
@@ -16,7 +19,27 @@ def actualizar_resumenes_actividad(sender, instance, created, **kwargs):
         
         # Si no hay fecha, no podemos crear un resumen
         if fecha is None:
-            print(f"[ADVERTENCIA] El entrenamiento {instance.id} no tiene fecha, no se puede crear resumen de actividad")
+            logger.warning(f"El entrenamiento {instance.id} no tiene fecha, no se puede crear resumen de actividad")
+            return
+        
+        # CORRECCIÓN: Asegurar que fecha es un objeto date, no string
+        if isinstance(fecha, str):
+            try:
+                # Intentar convertir string a date
+                if 'T' in fecha:
+                    # Formato ISO con tiempo
+                    fecha = datetime.datetime.fromisoformat(fecha.replace('Z', '')).date()
+                else:
+                    # Formato simple YYYY-MM-DD
+                    fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            except (ValueError, TypeError) as e:
+                logger.error(f"No se pudo convertir la fecha '{fecha}' a objeto date: {e}")
+                return
+        elif isinstance(fecha, datetime.datetime):
+            # Si es datetime, extraer solo la fecha
+            fecha = fecha.date()
+        elif not isinstance(fecha, datetime.date):
+            logger.error(f"La fecha del entrenamiento {instance.id} no es válida: {type(fecha)} - {fecha}")
             return
             
         # Actualizamos el resumen diario (lo creamos si no existe)
@@ -68,10 +91,12 @@ def actualizar_resumenes_actividad(sender, instance, created, **kwargs):
         resumen_diario.save()
         
         if es_nuevo:
-            print(f"Se ha creado un nuevo resumen diario para la fecha {fecha}")
+            logger.info(f"Nuevo resumen diario creado para {fecha}")
         else:
-            print(f"Se ha actualizado el resumen diario para la fecha {fecha}")
+            logger.info(f"Resumen diario actualizado para {fecha}")
         
     except Exception as e:
-        print(f"ERROR al actualizar los resúmenes de actividad: {e}")
-        # Aquí podríamos hacer alguna acción adicional como enviar una notificación
+        logger.error(f"ERROR al actualizar los resúmenes de actividad: {e}")
+        # Log más detallado para debugging
+        import traceback
+        logger.debug(f"Traceback completo: {traceback.format_exc()}")

@@ -101,13 +101,149 @@ class TrainingViewSet(viewsets.ModelViewSet):
             # Devolver la respuesta con los datos del entrenamiento creado
             headers = self.get_success_headers(serializer.data)
             return Response(
-                serializer.data, 
+                {
+                    "id": serializer.instance.id,
+                    "message": "Entrenamiento creado exitosamente",
+                    "training": serializer.data,
+                    "file_processed": serializer.instance.file_processed
+                },
                 status=status.HTTP_201_CREATED, 
                 headers=headers
             )
             
         except Exception as e:
             logger.error(f"Error al crear el entrenamiento: {e}")
+            return Response(
+                {"error": "Error al crear el entrenamiento", "detalle": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def upload_and_process(self, request):
+        """
+        Sube un archivo GPX/TCX y devuelve inmediatamente los datos extraídos
+        sin crear el entrenamiento completo (solo para previsualización)
+        """
+        if 'gpx_file' not in request.FILES:
+            return Response(
+                {"error": "No se proporcionó archivo"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        gpx_file = request.FILES['gpx_file']
+        logger.info(f"Procesando archivo para previsualización: {gpx_file.name}")
+        
+        try:
+            # Crear entrenamiento temporal (no guardado en BD)
+            temp_training = Training(user=request.user)
+            
+            # Procesar archivo usando la lógica existente
+            serializer = TrainingSerializer()
+            filename = gpx_file.name.lower()
+            
+            if filename.endswith('.gpx'):
+                logger.info(f"Procesando archivo GPX: {filename}")
+                serializer.process_gpx_file_improved(temp_training, gpx_file)
+            elif filename.endswith('.tcx'):
+                logger.info(f"Procesando archivo TCX: {filename}")
+                serializer.process_tcx_file_improved(temp_training, gpx_file)
+            elif filename.endswith('.fit'):
+                logger.info(f"Procesando archivo FIT: {filename}")
+                serializer.process_fit_file_improved(temp_training, gpx_file)
+            else:
+                return Response(
+                    {"error": "Formato no soportado. Solo se admiten archivos GPX, TCX y FIT"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Generar título automático si no existe
+            if not temp_training.title:
+                tipo_actividad = temp_training.get_activity_type_display()
+                if temp_training.date:
+                    temp_training.title = f"{tipo_actividad} - {temp_training.date.strftime('%d/%m/%Y')}"
+                else:
+                    temp_training.title = f"{tipo_actividad} - Importado"
+            
+            # Devolver datos extraídos para previsualización
+            extracted_data = {
+                "file_processed": True,
+                "extracted_data": {
+                    "title": temp_training.title,
+                    "activity_type": temp_training.activity_type,
+                    "date": temp_training.date.isoformat() if temp_training.date else None,
+                    "start_time": temp_training.start_time.isoformat() if temp_training.start_time else None,
+                    "duration": str(temp_training.duration) if temp_training.duration else None,
+                    "distance": temp_training.distance,
+                    "avg_speed": temp_training.avg_speed,
+                    "max_speed": temp_training.max_speed,
+                    "avg_heart_rate": temp_training.avg_heart_rate,
+                    "max_heart_rate": temp_training.max_heart_rate,
+                    "elevation_gain": temp_training.elevation_gain,
+                    "calories": temp_training.calories,
+                    "avg_cadence": temp_training.avg_cadence,
+                    "max_cadence": temp_training.max_cadence,
+                    "avg_temperature": temp_training.avg_temperature,
+                    "min_temperature": temp_training.min_temperature,
+                    "max_temperature": temp_training.max_temperature,
+                },
+                "file_info": {
+                    "filename": gpx_file.name,
+                    "size": gpx_file.size,
+                    "size_mb": round(gpx_file.size / (1024 * 1024), 2) if gpx_file.size > 1024*1024 else round(gpx_file.size / 1024, 2),
+                    "size_unit": "MB" if gpx_file.size > 1024*1024 else "KB",
+                    "type": filename.split('.')[-1].upper()
+                },
+                "message": "¡Archivo procesado correctamente! Datos extraídos automáticamente del archivo " + filename.split('.')[-1].upper()
+            }
+            
+            logger.info(f"Archivo {gpx_file.name} procesado exitosamente para previsualización")
+            return Response(extracted_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error procesando archivo para previsualización: {e}")
+            return Response(
+                {"error": f"Error procesando archivo: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def create_from_processed_data(self, request):
+        """
+        Crea un entrenamiento final usando datos ya procesados de un archivo.
+        Usado después de upload_and_process para confirmar la creación.
+        """
+        logger.info(f"Creando entrenamiento desde datos procesados para usuario: {request.user.username}")
+        
+        try:
+            # Preparar datos con usuario asignado
+            data = request.data.copy()
+            data['user'] = request.user.id
+            
+            # Crear serializador sin archivo (datos ya procesados)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            
+            # Guardar entrenamiento
+            self.perform_create(serializer)
+            
+            # Marcar como procesado (datos vienen de archivo procesado)
+            training = serializer.instance
+            training.file_processed = True
+            training.save()
+            
+            logger.info(f"Entrenamiento creado desde datos procesados con ID: {training.id}")
+            
+            return Response(
+                {
+                    "id": training.id,
+                    "message": "Entrenamiento creado exitosamente desde archivo procesado",
+                    "training": serializer.data
+                },
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            logger.error(f"Error creando entrenamiento desde datos procesados: {e}")
             return Response(
                 {"error": "Error al crear el entrenamiento", "detalle": str(e)},
                 status=status.HTTP_400_BAD_REQUEST

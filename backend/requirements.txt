@@ -22,6 +22,11 @@ pytz==2023.3                     # Soporte para zonas horarias
 beautifulsoup4==4.12.2           # Analizador HTML/XML para procesar archivos TCX
 lxml>=4.9.3                      # Analizador XML rápido usado con BeautifulSoup (optimizado)
 
+# ======== Procesamiento de archivos deportivos (NUEVOS) ========
+python-tcxparser==2.3.0          # Parser especializado para archivos TCX de Garmin
+fitparse==1.2.0                  # Parser para archivos FIT de Garmin/ANT+
+fit2gpx==0.0.7                   # Convertidor de archivos FIT a GPX
+
 # ======== Configuración y utilidades ========
 python-dotenv==1.0.0             # Carga variables de entorno desde archivos .env
 Pillow>=10.1.0                   # Procesamiento de imágenes (para fotos de perfil, optimizado)
