@@ -50,10 +50,14 @@ export default {
         favicon: "./assets/icon.png"
       },
       
+      // Configuración de red
+      hostUri: '192.168.1.137:8081',
+      
       // Variables de configuración extra para la app
       extra: {
-        // URL del backend - CAMBIAR POR LA IP DE TU SERVIDOR
-        apiUrl: "http://127.0.0.1:8000",  // Cambia esta IP
+        // URL del backend - Usando la IP local
+        apiUrl: "http://192.168.1.137:8000",
+        debugHost: '192.168.1.137:8081',
         
         // Configuración de desarrollo
         isDevelopment: true,

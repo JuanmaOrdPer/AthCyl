@@ -43,7 +43,6 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
 - **PostgreSQL** - Base de datos relacional
 - **Gunicorn** - Servidor WSGI para producción
 - **Nginx** - Servidor web y proxy inverso
-- **Redis** - Caché y cola de tareas
 
 ### Frontend (Aplicación Móvil)
 - **React Native con Expo** - Framework multiplataforma
@@ -71,7 +70,6 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
 | Node.js | 16.x o superior | [Descargar Node.js](https://nodejs.org/) |
 | Python | 3.8+ | [Descargar Python](https://www.python.org/downloads/) |
 | PostgreSQL | 12+ | [Descargar PostgreSQL](https://www.postgresql.org/download/) |
-| Redis | Última versión | [Descargar Redis](https://redis.io/download) |
 | Git | Última versión | [Descargar Git](https://git-scm.com/) |
 | Expo CLI | Última versión | `npm install -g expo-cli` |
 | Docker | Opcional | [Descargar Docker](https://www.docker.com/products/docker-desktop) |
@@ -165,19 +163,6 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
    ALTER USER athcyluser CREATEDB;
    ```
 
-#### Configuración de Redis (Opcional para caché y colas)
-
-1. **Instalar Redis**
-   - Windows: Usar WSL o descargar de [Microsoft Archive](https://github.com/microsoftarchive/redis/releases)
-   - macOS: `brew install redis`
-   - Linux: `sudo apt-get install redis-server`
-
-2. **Iniciar Redis**
-   ```bash
-   # En una nueva terminal
-   redis-server
-   ```
-
 #### Variables de Entorno Completas
 
 **Backend (.env)**
@@ -200,8 +185,6 @@ JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_LIFETIME=60
 JWT_REFRESH_TOKEN_LIFETIME=1440
 
-# Redis (opcional)
-REDIS_URL=redis://localhost:6379/0
 CACHE_TTL=300
 
 # Email (configuración de ejemplo para desarrollo)
