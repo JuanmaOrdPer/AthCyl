@@ -23,14 +23,6 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
 </details>
 
 <details>
-<summary>📍 Seguimiento en Tiempo Real</summary>
-
-- Mapa interactivo con seguimiento GPS
-- Métricas en tiempo real (distancia, velocidad, ritmo, elevación)
-- Historial de rutas guardadas
-- Notificaciones de hitos
-- Compartición en tiempo real con contactos
-</details>
 
 <details>
 <summary>📈 Análisis de Rendimiento</summary>
@@ -43,14 +35,6 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
 </details>
 
 <details>
-<summary>👥 Comunidad</summary>
-
-- Perfiles de atletas detallados
-- Compartición de rutas y logros
-- Eventos y retos deportivos
-- Clasificaciones y logros
-- Sistema de mensajería entre usuarios
-</details>
 
 ## 🛠️ Stack Tecnológico
 
