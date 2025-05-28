@@ -20,7 +20,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-.env
+#.env # Temporalmente permitido para compartir configuración
 db.sqlite3
 db.sqlite3-journal
 media/
