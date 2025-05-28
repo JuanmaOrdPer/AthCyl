@@ -23,8 +23,6 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
 </details>
 
 <details>
-
-<details>
 <summary>📈 Análisis de Rendimiento</summary>
 
 - Gráficos de progreso semanal/mensual/anual
@@ -34,7 +32,6 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
 - Exportación de informes en PDF/CSV
 </details>
 
-<details>
 
 ## 🛠️ Stack Tecnológico
 
