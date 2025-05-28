@@ -78,7 +78,157 @@ Aplicación móvil para la gestión de actividades deportivas, diseñada para at
 
 ### 🛠 Configuración del Entorno
 
-[Sección de configuración anterior...]
+#### Backend
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/JuanmaOrdPer/AthCyl.git
+   cd AthCyl/backend
+   ```
+
+2. **Crear y activar entorno virtual**
+   ```bash
+   # Windows
+   python -m venv venv
+   .\venv\Scripts\activate
+   
+   # macOS/Linux
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Instalar dependencias**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configurar variables de entorno**
+   Crea un archivo `.env` en la carpeta `backend` con:
+   ```env
+   DEBUG=True
+   SECRET_KEY=tu_clave_secreta_aqui
+   DATABASE_URL=postgres://usuario:contraseña@localhost:5432/athcyldb
+   ALLOWED_HOSTS=localhost,127.0.0.1
+   CORS_ALLOWED_ORIGINS=http://localhost:19006
+   ```
+
+5. **Aplicar migraciones**
+   ```bash
+   python manage.py migrate
+   ```
+
+6. **Crear superusuario**
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+7. **Iniciar servidor de desarrollo**
+   ```bash
+   python manage.py runserver
+   ```
+
+#### Frontend
+
+1. **Navegar al directorio del frontend**
+   ```bash
+   cd ../frontend
+   ```
+
+2. **Instalar dependencias**
+   ```bash
+   npm install
+   ```
+
+3. **Configurar variables de entorno**
+   Crea un archivo `.env` en la carpeta `frontend` con:
+   ```env
+   EXPO_PUBLIC_API_URL=http://localhost:8000/api
+   ```
+
+4. **Iniciar la aplicación**
+   ```bash
+   npx expo start
+   ```
+
+5. **Escanear el código QR** con la aplicación Expo Go en tu dispositivo móvil o usa un emulador.
+
+#### Configuración de la Base de Datos
+
+1. **Instalar PostgreSQL**
+   - Descargar e instalar desde [postgresql.org](https://www.postgresql.org/download/)
+   - Crear una base de datos llamada `athcyldb`
+
+2. **Configurar usuario y permisos**
+   ```sql
+   CREATE USER athcyluser WITH PASSWORD 'tupassword';
+   GRANT ALL PRIVILEGES ON DATABASE athcyldb TO athcyluser;
+   ALTER USER athcyluser CREATEDB;
+   ```
+
+#### Configuración de Redis (Opcional para caché y colas)
+
+1. **Instalar Redis**
+   - Windows: Usar WSL o descargar de [Microsoft Archive](https://github.com/microsoftarchive/redis/releases)
+   - macOS: `brew install redis`
+   - Linux: `sudo apt-get install redis-server`
+
+2. **Iniciar Redis**
+   ```bash
+   # En una nueva terminal
+   redis-server
+   ```
+
+#### Variables de Entorno Completas
+
+**Backend (.env)**
+```env
+# Configuración básica
+DEBUG=True
+SECRET_KEY=tu_clave_secreta_aqui
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Base de datos
+DATABASE_URL=postgres://usuario:contraseña@localhost:5432/athcyldb
+
+# CORS y Seguridad
+CORS_ALLOWED_ORIGINS=http://localhost:19006
+CSRF_TRUSTED_ORIGINS=http://localhost:8000
+
+# JWT
+JWT_SECRET_KEY=tu_clave_jwt_secreta
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_LIFETIME=60
+JWT_REFRESH_TOKEN_LIFETIME=1440
+
+# Redis (opcional)
+REDIS_URL=redis://localhost:6379/0
+CACHE_TTL=300
+
+# Email (configuración de ejemplo para desarrollo)
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=localhost
+EMAIL_PORT=1025
+```
+
+**Frontend (.env)**
+```env
+# API
+EXPO_PUBLIC_API_URL=http://localhost:8000/api
+
+# Mapas (obtén tu API key)
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=tu_api_key_aquí
+
+# Sentry (opcional)
+EXPO_PUBLIC_SENTRY_DSN=tu_dsn_de_sentry
+```
+
+#### Solución de Problemas Comunes
+
+- **Error de conexión a la base de datos**: Verifica que PostgreSQL esté corriendo y que las credenciales en `.env` sean correctas.
+- **Problemas con dependencias**: Ejecuta `pip freeze > requirements.txt` después de instalar nuevas dependencias.
+- **Errores de migración**: Intenta borrar la base de datos y volver a crearla, luego ejecuta las migraciones de nuevo.
+- **Problemas con CORS**: Asegúrate de que `CORS_ALLOWED_ORIGINS` incluya la URL de tu frontend.
+
 
 ## 🖥️ Estructura del Proyecto
 
