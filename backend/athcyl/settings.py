@@ -32,8 +32,13 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production'
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # Hosts permitidos
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-
+ALLOWED_HOSTS = [
+    '192.168.1.137',  # Tu IP específica
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    # Agregar cualquier otra IP que necesites
+]
 # APLICACIONES
 INSTALLED_APPS = [
     # Aplicaciones de Django
