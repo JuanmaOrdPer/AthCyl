@@ -470,6 +470,6 @@ class GoalAdmin(admin.ModelAdmin):
         )
 
 # Personalización del admin principal
-admin.site.site_header = "🏃‍♂️ AthCyl - Administración"
+admin.site.site_header = "AthCyl - Administración"
 admin.site.site_title = "AthCyl Admin"
 admin.site.index_title = "Panel de Control Deportivo"
