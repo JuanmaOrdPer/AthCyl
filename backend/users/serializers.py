@@ -11,9 +11,29 @@ Fecha: Mayo 2025
 """
 
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
 from .models import User
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializador personalizado para la autenticación JWT.
+    Permite la autenticación usando el campo 'email' en lugar de 'username'.
+    """
+    def validate(self, attrs):
+        # Cambiar 'username' por 'email' en los datos de validación
+        if 'username' in attrs:
+            attrs['email'] = attrs.pop('username')
+        return super().validate(attrs)
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Añadir campos personalizados al token si es necesario
+        token['email'] = user.email
+        return token
 
 class UserSerializer(serializers.ModelSerializer):
     """

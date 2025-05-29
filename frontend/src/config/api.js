@@ -14,20 +14,22 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ===== CONFIGURACIÓN BASE =====
-// Función para obtener la URL base de la API
 function getApiBaseUrl() {
-  // Prioridad de configuración:
-  // 1. Variable de entorno EXPO_PUBLIC_API_URL
-  // 2. Configuración en app.config.js
-  // 3. localhost por defecto
+  // Para desarrollo local con emulador de Android
+  const isAndroidEmulator = Constants.appOwnership === 'expo' && 
+                         Constants.expoVersion && 
+                         Constants.deviceName && 
+                         Constants.deviceName.toLowerCase().includes('emulator');
   
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  const configUrl = Constants.expoConfig?.extra?.apiUrl;
-  const fallbackUrl = "http://localhost:8000";
-  
-  const baseUrl = envUrl || configUrl || fallbackUrl;
+  // Usar 10.0.2.2 para el emulador de Android (apunta al localhost del host)
+  // o la IP local para dispositivos físicos
+  const baseUrl = isAndroidEmulator 
+    ? 'http://10.0.2.2:8000' 
+    : 'http://192.168.0.7:8000';
   
   console.log('🔗 API Base URL configurada:', baseUrl);
+  console.log('Dispositivo:', Constants.deviceName);
+  console.log('Es emulador Android:', isAndroidEmulator);
   
   return baseUrl;
 }

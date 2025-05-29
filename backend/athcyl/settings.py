@@ -33,10 +33,11 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # Hosts permitidos
 ALLOWED_HOSTS = [
-    '192.168.1.137',  # Tu IP específica
+    '192.168.0.7',  # Tu IP específica
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
+    '*',
     # Agregar cualquier otra IP que necesites
 ]
 # APLICACIONES
@@ -198,6 +199,13 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
+    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+    
+    # Usar el serializador personalizado
+    'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer',
     'USER_ID_CLAIM': 'user_id',
     'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
 
@@ -213,15 +221,54 @@ SIMPLE_JWT = {
 }
 
 # CONFIGURACIÓN DE CORS
+# En desarrollo, permitir todos los orígenes
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = os.getenv(
-    'CORS_ALLOWED_ORIGINS', 
-    'http://localhost:3000,http://localhost:8081'
-).split(',')
 
-# Para desarrollo, permitir todos los orígenes
+# Configuración de métodos HTTP permitidos
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Configuración de orígenes permitidos
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:19000',
+    'http://localhost:19006',
+    'http://127.0.0.1:19000',
+    'http://127.0.0.1:19006',
+    'http://192.168.0.7:19000',
+    'http://192.168.0.7:19006',
+    'exp://192.168.0.7:19000',
+    'exp://192.168.0.7:19006',
+    'http://10.0.2.2:8000',  # Para emulador de Android
+]
+
+# En desarrollo, agregar la IP local dinámicamente
 if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
+    try:
+        import socket
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        
+        # Agregar IP local a los orígenes permitidos
+        origins_to_add = [
+            f'http://{local_ip}:19000',
+            f'http://{local_ip}:19006',
+            f'exp://{local_ip}:19000',
+            f'exp://{local_ip}:19006',
+        ]
+        
+        for origin in origins_to_add:
+            if origin not in CORS_ALLOWED_ORIGINS:
+                CORS_ALLOWED_ORIGINS.append(origin)
+                
+    except Exception as e:
+        print(f'Error al obtener la IP local: {e}')
 
 # Headers permitidos para CORS
 CORS_ALLOW_HEADERS = [

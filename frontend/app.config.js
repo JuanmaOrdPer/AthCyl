@@ -1,6 +1,5 @@
 /**
- * Configuración de la aplicación Expo para AthCyl - VERSIÓN FINAL
- * Optimizada para IP: 192.168.1.137
+ * Configuración de la aplicación Expo para AthCyl
  */
 
 export default {
@@ -11,12 +10,17 @@ export default {
     description: "Aplicación para gestión de entrenamientos deportivos",
     orientation: "portrait",
     icon: "./assets/icon.png",
+    userInterfaceStyle: "light",
     
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain", 
-      backgroundColor: "#ffffff"
+      backgroundColor: "#2E7D32"
     },
+    
+    assetBundlePatterns: [
+      "**/*"
+    ],
     
     ios: {
       supportsTablet: true,
@@ -25,21 +29,19 @@ export default {
     
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/icon.png",
+        foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#2E7D32"
       },
       package: "com.athcyl.app"
     },
     
     web: {
-      favicon: "./assets/icon.png"
+      favicon: "./assets/favicon.png"
     },
     
-    // Configuración de red específica para tu IP
+    // CONFIGURACIÓN DINÁMICA DE API
     extra: {
-      apiUrl: "http://192.168.1.137:8000",
-      isDevelopment: true,
-      apiVersion: "v1"
+      apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000"
     }
   }
 };

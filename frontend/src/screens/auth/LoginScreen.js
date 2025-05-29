@@ -2,10 +2,10 @@
  * Pantalla de Login para AthCyl
  * 
  * Esta pantalla permite a los usuarios iniciar sesión en la aplicación
- * usando su email o nombre de usuario junto con su contraseña.
+ * usando su correo electrónico y contraseña.
  * 
  * Características:
- * - Login con email o username
+ * - Login con email
  * - Validación de campos
  * - Manejo de errores
  * - Navegación a registro
@@ -77,7 +77,7 @@ const LoginScreen = ({ navigation, onLogin }) => {
     
     // Validar contraseña
     if (!formData.password) {
-      newErrors.password = 'Contraseña es requerida';
+      newErrors.password = 'La contraseña es requerida';
     } else if (formData.password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
     }

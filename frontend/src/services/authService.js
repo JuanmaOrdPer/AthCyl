@@ -35,11 +35,11 @@ class AuthService {
       
       // Realizar petición de login al backend
       const response = await api.post(API_ENDPOINTS.auth.login, {
-        username_or_email: usernameOrEmail,
+        username: usernameOrEmail,
         password: password
       });
       
-      const { access, refresh, user_id, email, username } = response.data;
+      const { access, refresh, user } = response.data;
       
       // Guardar tokens en AsyncStorage
       await AsyncStorage.multiSet([

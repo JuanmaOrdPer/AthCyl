@@ -29,6 +29,20 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   
+  // TEMPORAL - Para debugging
+useEffect(() => {
+  const testAPI = async () => {
+    try {
+      console.log('Testing API connection...');
+      const response = await fetch('http://TU_IP:8000/admin/');
+      console.log('API Response status:', response.status);
+    } catch (error) {
+      console.log('API Error:', error.message);
+    }
+  };
+  testAPI();
+}, []);
+  
   /**
    * Verificar estado de autenticación al iniciar la app
    */
