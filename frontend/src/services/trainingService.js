@@ -1,9 +1,10 @@
 /**
- * Servicio de Entrenamientos para AthCyl
+ * Servicio de Entrenamientos para AthCyl - COMPLETO CON SOPORTE GPX/TCX
  * 
  * Este servicio maneja todas las operaciones relacionadas con entrenamientos:
  * - Obtener lista de entrenamientos
- * - Crear nuevos entrenamientos
+ * - Crear nuevos entrenamientos (manual y desde archivos)
+ * - Procesar archivos GPX/TCX/FIT
  * - Obtener detalles de un entrenamiento específico
  * - Actualizar y eliminar entrenamientos
  * - Exportar datos de entrenamientos
@@ -68,7 +69,7 @@ class TrainingService {
   }
   
   /**
-   * Crear un nuevo entrenamiento
+   * Crear un nuevo entrenamiento manual
    * @param {object} trainingData - Datos del entrenamiento
    * @returns {Promise<object>} Resultado de la creación
    */
@@ -105,6 +106,129 @@ class TrainingService {
       
     } catch (error) {
       console.error('❌ Error creando entrenamiento:', error);
+      
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      };
+    }
+  }
+  
+  /**
+   * Subir y procesar archivo GPX/TCX para extraer datos
+   * @param {object} file - Archivo GPX/TCX seleccionado
+   * @returns {Promise<object>} Datos extraídos del archivo
+   */
+  async uploadAndProcessFile(file) {
+    try {
+      console.log('📁 Procesando archivo GPX/TCX:', file.name);
+      
+      // Crear FormData para enviar el archivo
+      const formData = new FormData();
+      formData.append('gpx_file', {
+        uri: file.uri,
+        type: file.type || 'application/octet-stream',
+        name: file.name
+      });
+      
+      const response = await api.post(API_ENDPOINTS.trainings.uploadAndProcess, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+      
+      console.log('✅ Archivo procesado exitosamente');
+      
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Error procesando archivo GPX/TCX:', error);
+      
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      };
+    }
+  }
+  
+  /**
+   * Crear entrenamiento desde datos ya procesados de archivo
+   * @param {object} trainingData - Datos del entrenamiento extraídos del archivo
+   * @returns {Promise<object>} Resultado de la creación
+   */
+  async createTrainingFromProcessedData(trainingData) {
+    try {
+      console.log('💾 Creando entrenamiento desde datos procesados...');
+      
+      const response = await api.post(API_ENDPOINTS.trainings.createFromProcessed, trainingData);
+      
+      console.log('✅ Entrenamiento creado desde archivo');
+      
+      return {
+        success: true,
+        data: response.data.training || response.data,
+        message: response.data.message || 'Entrenamiento creado desde archivo exitosamente'
+      };
+      
+    } catch (error) {
+      console.error('❌ Error creando entrenamiento desde archivo:', error);
+      
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      };
+    }
+  }
+  
+  /**
+   * Crear entrenamiento con archivo GPX/TCX (proceso completo)
+   * @param {object} trainingData - Datos del entrenamiento
+   * @param {object} file - Archivo GPX/TCX (opcional)
+   * @returns {Promise<object>} Resultado de la creación
+   */
+  async createTrainingWithFile(trainingData, file = null) {
+    try {
+      console.log('🏃 Creando entrenamiento con archivo...');
+      
+      // Crear FormData para enviar datos y archivo
+      const formData = new FormData();
+      
+      // Agregar datos del entrenamiento
+      Object.keys(trainingData).forEach(key => {
+        if (trainingData[key] !== null && trainingData[key] !== undefined && trainingData[key] !== '') {
+          formData.append(key, trainingData[key]);
+        }
+      });
+      
+      // Agregar archivo si existe
+      if (file) {
+        formData.append('gpx_file', {
+          uri: file.uri,
+          type: file.type || 'application/octet-stream',
+          name: file.name
+        });
+      }
+      
+      const response = await api.post(API_ENDPOINTS.trainings.create, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+      
+      console.log('✅ Entrenamiento creado con archivo');
+      
+      return {
+        success: true,
+        data: response.data.training || response.data,
+        message: response.data.message || 'Entrenamiento creado exitosamente',
+        fileProcessed: response.data.file_processed || false
+      };
+      
+    } catch (error) {
+      console.error('❌ Error creando entrenamiento con archivo:', error);
       
       return {
         success: false,
@@ -340,6 +464,32 @@ class TrainingService {
     
     return (hours * 3600) + (minutes * 60) + seconds;
   }
+  
+  /**
+   * Validar archivo GPX/TCX/FIT
+   * @param {string} fileName - Nombre del archivo
+   * @returns {boolean} Es un archivo válido
+   */
+  isValidTrainingFile(fileName) {
+    const validExtensions = ['.gpx', '.tcx', '.fit'];
+    const extension = fileName.toLowerCase().split('.').pop();
+    return validExtensions.includes(`.${extension}`);
+  }
+  
+  /**
+   * Obtener tipo de archivo
+   * @param {string} fileName - Nombre del archivo
+   * @returns {string} Tipo de archivo
+   */
+  getFileType(fileName) {
+    const extension = fileName.toLowerCase().split('.').pop();
+    switch (extension) {
+      case 'gpx': return 'GPX';
+      case 'tcx': return 'TCX';
+      case 'fit': return 'FIT';
+      default: return 'UNKNOWN';
+    }
+  }
 }
 
 // ===== EXPORTAR INSTANCIA SINGLETON =====
@@ -350,6 +500,9 @@ export default trainingService;
 export const {
   getTrainings,
   createTraining,
+  uploadAndProcessFile,
+  createTrainingFromProcessedData,
+  createTrainingWithFile,
   getTrainingDetails,
   updateTraining,
   deleteTraining,
@@ -357,5 +510,7 @@ export const {
   formatDuration,
   formatDate,
   secondsToTimeString,
-  timeStringToSeconds
+  timeStringToSeconds,
+  isValidTrainingFile,
+  getFileType
 } = trainingService;

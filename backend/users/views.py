@@ -1,10 +1,11 @@
 """
-Vistas para la gestión de usuarios.
+Vistas para la gestión de usuarios - VERSIÓN CORREGIDA.
 
 Este módulo define las vistas API para:
 - Registro de usuarios
 - Gestión del perfil de usuario
 - Información del usuario actual
+- Autenticación JWT personalizada
 
 Autor: Juan Manuel Ordás Periscal
 Fecha: Mayo 2025
@@ -13,8 +14,11 @@ Fecha: Mayo 2025
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.password_validation import validate_password
 import logging
 
 from .models import User
@@ -26,6 +30,131 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ===== VISTAS DE AUTENTICACIÓN PERSONALIZADAS CORREGIDAS =====
+
+class CustomLoginView(APIView):
+    """
+    Vista de login personalizada que acepta username o email
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        username_or_email = request.data.get('username')  # El frontend envía 'username'
+        password = request.data.get('password')
+        
+        if not username_or_email or not password:
+            return Response({
+                'error': 'Usuario y contraseña son requeridos'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Intentar autenticación con username primero
+        user = authenticate(username=username_or_email, password=password)
+        
+        # Si no funciona, intentar con email
+        if not user:
+            try:
+                User = get_user_model()
+                user_obj = User.objects.get(email=username_or_email)
+                user = authenticate(username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                pass
+        
+        if user and user.is_active:
+            # Generar tokens JWT
+            refresh = RefreshToken.for_user(user)
+            access_token = refresh.access_token
+            
+            # Serializar datos del usuario
+            user_serializer = UserProfileSerializer(user)
+            
+            # Formato que espera el frontend
+            return Response({
+                'token': str(access_token),  # Access token
+                'refresh': str(refresh),     # Refresh token  
+                'user': user_serializer.data,
+                'message': 'Login exitoso'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': 'Credenciales inválidas'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class CustomRegisterView(APIView):
+    """
+    Vista de registro personalizada
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            logger.info(f"Datos de registro recibidos: {request.data}")
+            
+            # Validar datos de registro
+            serializer = UserRegistrationSerializer(data=request.data)
+            
+            if not serializer.is_valid():
+                logger.warning(f"Errores de validación: {serializer.errors}")
+                return Response({
+                    'error': 'Datos de registro inválidos',
+                    'details': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Crear usuario
+            user = serializer.save()
+            logger.info(f"Usuario creado exitosamente: {user.email}")
+            
+            # Generar tokens JWT automáticamente
+            refresh = RefreshToken.for_user(user)
+            access_token = refresh.access_token
+            
+            # Serializar datos del usuario
+            user_serializer = UserProfileSerializer(user)
+            
+            # Formato que espera el frontend
+            return Response({
+                'token': str(access_token),  # El frontend espera 'token'
+                'refresh': str(refresh),
+                'user': user_serializer.data,
+                'message': 'Registro exitoso',
+                'autoLogin': True
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"Error durante el registro: {str(e)}", exc_info=True)
+            return Response({
+                'error': 'Error interno del servidor durante el registro',
+                'details': str(e)  # Para debugging
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CustomLogoutView(APIView):
+    """
+    Vista de logout personalizada
+    """
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh')
+            
+            if refresh_token:
+                # Invalidar el refresh token
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            
+            return Response({
+                'message': 'Logout exitoso'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            # Aunque falle, devolvemos éxito porque el logout del frontend funciona
+            logger.warning(f"Error en logout: {e}")
+            return Response({
+                'message': 'Logout exitoso'
+            }, status=status.HTTP_200_OK)
+
+
+# ===== VIEWSET PRINCIPAL DE USUARIOS =====
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -41,8 +170,6 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """
         Define los permisos basados en la acción.
-        
-        Para el registro permite acceso público, para el resto requiere autenticación.
         """
         if self.action in ['create', 'register']:
             return [permissions.AllowAny()]
@@ -65,7 +192,6 @@ class UserViewSet(viewsets.ModelViewSet):
         Limita el queryset según los permisos del usuario.
         """
         if self.action == 'list':
-            # Para listar usuarios, solo mostrar usuarios activos
             return User.objects.filter(is_active=True)
         return User.objects.all()
     
@@ -76,67 +202,6 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ['me', 'update_profile']:
             return self.request.user
         return super().get_object()
-    
-    def create(self, request, *args, **kwargs):
-        """
-        Crea un nuevo usuario (registro).
-        
-        Este método redirige al método register para mantener consistencia.
-        """
-        return self.register(request, *args, **kwargs)
-    
-    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
-    def register(self, request):
-        """
-        Registra un nuevo usuario y devuelve tokens JWT.
-        """
-        logger.info(f"Intento de registro con datos: {request.data}")
-        
-        try:
-            # Validar datos de registro
-            serializer = UserRegistrationSerializer(data=request.data)
-            if not serializer.is_valid():
-                logger.warning(f"Datos de registro inválidos: {serializer.errors}")
-                return Response(
-                    {
-                        'error': 'Datos de registro inválidos',
-                        'details': serializer.errors
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Crear usuario
-            user = serializer.save()
-            logger.info(f"Usuario creado exitosamente: {user.email}")
-            
-            # Generar tokens JWT
-            refresh = RefreshToken.for_user(user)
-            access_token = refresh.access_token
-            
-            # Serializar datos del usuario
-            user_serializer = UserProfileSerializer(user)
-            
-            return Response(
-                {
-                    'message': 'Usuario registrado exitosamente',
-                    'user': user_serializer.data,
-                    'tokens': {
-                        'access': str(access_token),
-                        'refresh': str(refresh),
-                    }
-                },
-                status=status.HTTP_201_CREATED
-            )
-            
-        except Exception as e:
-            logger.error(f"Error durante el registro: {str(e)}", exc_info=True)
-            return Response(
-                {
-                    'error': 'Error interno del servidor durante el registro',
-                    'message': 'Por favor, inténtalo de nuevo más tarde.'
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
     
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -153,7 +218,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-    @action(detail=False, methods=['patch', 'put'])
+    @action(detail=False, methods=['patch', 'put', 'post'])
     def update_profile(self, request):
         """
         Actualiza el perfil del usuario actual.
@@ -163,7 +228,7 @@ class UserViewSet(viewsets.ModelViewSet):
             user = request.user
             
             # Determinar si es actualización parcial o completa
-            partial = request.method == 'PATCH'
+            partial = request.method in ['PATCH', 'POST']
             
             # Crear serializador
             serializer = UserProfileSerializer(
@@ -232,7 +297,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 )
             
             # Validar nueva contraseña
-            from django.contrib.auth.password_validation import validate_password
             try:
                 validate_password(new_password, user)
             except Exception as e:
@@ -262,8 +326,6 @@ class UserViewSet(viewsets.ModelViewSet):
     def delete_account(self, request):
         """
         Desactiva la cuenta del usuario actual.
-        
-        No elimina físicamente la cuenta, solo la desactiva por seguridad.
         """
         try:
             user = request.user
@@ -302,7 +364,6 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Actualiza un usuario específico (solo administradores).
         """
-        # Solo permitir a administradores actualizar otros usuarios
         if not request.user.is_staff:
             return Response(
                 {'error': 'No tienes permisos para realizar esta acción'},
@@ -315,7 +376,6 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Elimina un usuario específico (solo administradores).
         """
-        # Solo permitir a administradores eliminar usuarios
         if not request.user.is_staff:
             return Response(
                 {'error': 'No tienes permisos para realizar esta acción'},

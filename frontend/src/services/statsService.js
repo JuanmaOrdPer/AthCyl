@@ -123,7 +123,7 @@ class StatsService {
     try {
       console.log(`📊 Obteniendo tendencias ${periodo}...`);
       
-      const response = await api.get(API_ENDPOINTS.stats.trends, {
+      const response = await api.get(API_ENDPOINTS.stats.tendencias, {
         params: { periodo }
       });
       

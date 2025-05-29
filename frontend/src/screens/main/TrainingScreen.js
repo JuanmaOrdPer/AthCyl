@@ -1,16 +1,20 @@
 /**
- * Pantalla de Crear/Editar Entrenamiento para AthCyl
+ * Pantalla de Crear/Editar Entrenamiento para AthCyl - COMPLETO CON SOPORTE GPX/TCX
  * 
- * Esta pantalla permite a los usuarios crear nuevos entrenamientos manualmente.
- * Incluye todos los campos necesarios con validación.
+ * Esta pantalla permite a los usuarios:
+ * - Crear entrenamientos manualmente
+ * - Importar entrenamientos desde archivos GPX/TCX/FIT
+ * - Editar entrenamientos existentes
+ * - Auto-completar campos desde archivos GPS
  * 
  * Características:
  * - Formulario completo para entrenamientos
- * - Validación de campos
- * - Selector de tipo de actividad
- * - Selector de fecha y hora
- * - Cálculos automáticos (velocidad promedio)
- * - Manejo de errores
+ * - Selector de archivos GPX/TCX/FIT
+ * - Procesamiento automático de archivos
+ * - Auto-llenado de campos desde archivo
+ * - Validación de campos y archivos
+ * - Indicadores visuales de progreso
+ * - Manejo de errores completo
  */
 
 import React, { useState } from 'react';
@@ -24,6 +28,7 @@ import {
   StyleSheet
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 
 // Importar componentes
 import Input from '../../components/Input';
@@ -64,6 +69,145 @@ const TrainingScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   
+  // Estados para archivos GPX/TCX
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileProcessed, setFileProcessed] = useState(false);
+  const [extractedData, setExtractedData] = useState(null);
+  const [processingFile, setProcessingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
+  /**
+   * Seleccionar archivo GPX/TCX/FIT
+   */
+  const selectFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['*/*'], // Permitir todos los tipos por compatibilidad
+        copyToCacheDirectory: true,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        
+        // Verificar extensión del archivo
+        const fileName = file.name.toLowerCase();
+        if (!fileName.endsWith('.gpx') && !fileName.endsWith('.tcx') && !fileName.endsWith('.fit')) {
+          Alert.alert(
+            'Archivo no válido',
+            'Por favor selecciona un archivo GPX, TCX o FIT.\n\n' +
+            'Estos archivos los puedes obtener de aplicaciones como Strava, Garmin Connect, o tu dispositivo GPS.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        
+        // Verificar tamaño del archivo (máximo 50MB)
+        const maxSize = 50 * 1024 * 1024; // 50MB en bytes
+        if (file.size > maxSize) {
+          Alert.alert(
+            'Archivo demasiado grande',
+            `El archivo es demasiado grande (${(file.size / (1024 * 1024)).toFixed(1)} MB).\n\nTamaño máximo permitido: 50 MB.`,
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        
+        console.log('📁 Archivo seleccionado:', file.name, `(${(file.size / 1024).toFixed(1)} KB)`);
+        setSelectedFile(file);
+        
+        // Procesar archivo automáticamente
+        await processFile(file);
+      }
+    } catch (error) {
+      console.error('❌ Error seleccionando archivo:', error);
+      Alert.alert('Error', 'No se pudo seleccionar el archivo');
+    }
+  };
+  
+  /**
+   * Procesar archivo GPX/TCX para extraer datos
+   */
+  const processFile = async (file) => {
+    setProcessingFile(true);
+    setUploadProgress(0);
+    
+    try {
+      console.log('🔄 Procesando archivo:', file.name);
+      
+      const result = await trainingService.uploadAndProcessFile(file);
+      
+      if (result.success) {
+        const data = result.data;
+        
+        if (data.file_processed && data.extracted_data) {
+          // Actualizar formulario con datos extraídos
+          const extracted = data.extracted_data;
+          
+          setFormData(prev => ({
+            ...prev,
+            title: extracted.title || prev.title,
+            activityType: extracted.activity_type || prev.activityType,
+            date: extracted.date || prev.date,
+            startTime: extracted.start_time ? extracted.start_time.substring(0, 5) : prev.startTime,
+            duration: extracted.duration || prev.duration,
+            distance: extracted.distance?.toString() || prev.distance,
+            calories: extracted.calories?.toString() || prev.calories,
+            avgSpeed: extracted.avg_speed?.toString() || prev.avgSpeed,
+            maxSpeed: extracted.max_speed?.toString() || prev.maxSpeed,
+            avgHeartRate: extracted.avg_heart_rate?.toString() || prev.avgHeartRate,
+            maxHeartRate: extracted.max_heart_rate?.toString() || prev.maxHeartRate,
+            elevationGain: extracted.elevation_gain?.toString() || prev.elevationGain,
+          }));
+          
+          setExtractedData(data);
+          setFileProcessed(true);
+          
+          Alert.alert(
+            '¡Archivo procesado exitosamente!',
+            `${data.message}\n\n` +
+            `📊 Datos extraídos:\n` +
+            `• Distancia: ${extracted.distance ? extracted.distance.toFixed(2) + ' km' : 'N/A'}\n` +
+            `• Duración: ${extracted.duration || 'N/A'}\n` +
+            `• Velocidad promedio: ${extracted.avg_speed ? extracted.avg_speed.toFixed(1) + ' km/h' : 'N/A'}\n\n` +
+            `Los campos del formulario se han completado automáticamente. Puedes editarlos si es necesario.`,
+            [{ text: 'Continuar' }]
+          );
+        } else {
+          Alert.alert('Error', 'No se pudieron extraer datos del archivo');
+        }
+      } else {
+        Alert.alert('Error procesando archivo', result.error || 'Error inesperado procesando el archivo');
+      }
+    } catch (error) {
+      console.error('❌ Error procesando archivo:', error);
+      Alert.alert('Error', 'Error inesperado procesando el archivo');
+    } finally {
+      setProcessingFile(false);
+      setUploadProgress(0);
+    }
+  };
+  
+  /**
+   * Limpiar archivo seleccionado
+   */
+  const clearFile = () => {
+    Alert.alert(
+      'Limpiar archivo',
+      '¿Quieres quitar el archivo seleccionado?\n\nLos datos extraídos se mantendrán en el formulario.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpiar',
+          onPress: () => {
+            setSelectedFile(null);
+            setFileProcessed(false);
+            setExtractedData(null);
+          }
+        }
+      ]
+    );
+  };
+  
   /**
    * Actualizar datos del formulario
    */
@@ -81,8 +225,8 @@ const TrainingScreen = ({ navigation, route }) => {
       }));
     }
     
-    // Calcular velocidad promedio automáticamente
-    if (field === 'distance' || field === 'duration') {
+    // Calcular velocidad promedio automáticamente (solo si no viene de archivo)
+    if ((field === 'distance' || field === 'duration') && !fileProcessed) {
       calculateAvgSpeed(
         field === 'distance' ? value : formData.distance,
         field === 'duration' ? value : formData.duration
@@ -159,6 +303,24 @@ const TrainingScreen = ({ navigation, route }) => {
       newErrors.maxHeartRate = 'Valor entre 40 y 220 bpm';
     }
     
+    // Validar que velocidad máxima >= velocidad promedio
+    if (formData.avgSpeed && formData.maxSpeed) {
+      const avgSpeed = parseFloat(formData.avgSpeed);
+      const maxSpeed = parseFloat(formData.maxSpeed);
+      if (maxSpeed < avgSpeed) {
+        newErrors.maxSpeed = 'La velocidad máxima debe ser mayor o igual a la promedio';
+      }
+    }
+    
+    // Validar que ritmo cardíaco máximo >= promedio
+    if (formData.avgHeartRate && formData.maxHeartRate) {
+      const avgHR = parseFloat(formData.avgHeartRate);
+      const maxHR = parseFloat(formData.maxHeartRate);
+      if (maxHR < avgHR) {
+        newErrors.maxHeartRate = 'El ritmo cardíaco máximo debe ser mayor o igual al promedio';
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -168,6 +330,11 @@ const TrainingScreen = ({ navigation, route }) => {
    */
   const handleSubmit = async () => {
     if (!validateForm()) {
+      Alert.alert(
+        'Errores en el formulario',
+        'Por favor corrige los errores antes de continuar.',
+        [{ text: 'OK' }]
+      );
       return;
     }
     
@@ -176,18 +343,50 @@ const TrainingScreen = ({ navigation, route }) => {
     try {
       console.log('💾 Guardando entrenamiento...');
       
-      const result = isEditing 
-        ? await trainingService.updateTraining(editingTraining.id, formData)
-        : await trainingService.createTraining(formData);
+      let result;
+      
+      if (isEditing) {
+        // Actualizar entrenamiento existente
+        result = await trainingService.updateTraining(editingTraining.id, formData);
+      } else if (fileProcessed && extractedData) {
+        // Crear desde datos procesados de archivo
+        result = await trainingService.createTrainingFromProcessedData({
+          ...formData,
+          activity_type: formData.activityType,
+          start_time: formData.startTime,
+          avg_speed: formData.avgSpeed ? parseFloat(formData.avgSpeed) : null,
+          max_speed: formData.maxSpeed ? parseFloat(formData.maxSpeed) : null,
+          avg_heart_rate: formData.avgHeartRate ? parseFloat(formData.avgHeartRate) : null,
+          max_heart_rate: formData.maxHeartRate ? parseFloat(formData.maxHeartRate) : null,
+          elevation_gain: formData.elevationGain ? parseFloat(formData.elevationGain) : null,
+          distance: formData.distance ? parseFloat(formData.distance) : null,
+          calories: formData.calories ? parseInt(formData.calories) : null,
+        });
+      } else {
+        // Crear entrenamiento manual o con archivo
+        result = selectedFile 
+          ? await trainingService.createTrainingWithFile(formData, selectedFile)
+          : await trainingService.createTraining(formData);
+      }
       
       if (result.success) {
+        const message = isEditing 
+          ? 'Entrenamiento actualizado correctamente' 
+          : result.fileProcessed 
+            ? 'Entrenamiento creado exitosamente desde archivo'
+            : 'Entrenamiento creado correctamente';
+            
         Alert.alert(
           'Éxito',
-          isEditing ? 'Entrenamiento actualizado correctamente' : 'Entrenamiento creado correctamente',
+          message,
           [
             {
-              text: 'OK',
-              onPress: () => navigation.goBack()
+              text: 'Ver Entrenamientos',
+              onPress: () => {
+                navigation.goBack();
+                // Opcional: navegar a la lista de entrenamientos
+                // navigation.navigate('TrainingList');
+              }
             }
           ]
         );
@@ -210,6 +409,123 @@ const TrainingScreen = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
+  
+  /**
+   * Confirmar cancelación
+   */
+  const handleCancel = () => {
+    if (selectedFile || Object.values(formData).some(value => value && value !== '')) {
+      Alert.alert(
+        'Cancelar',
+        '¿Estás seguro de que quieres cancelar? Se perderán todos los cambios.',
+        [
+          { text: 'Continuar editando', style: 'cancel' },
+          { 
+            text: 'Cancelar', 
+            style: 'destructive',
+            onPress: () => navigation.goBack() 
+          }
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
+  };
+  
+  /**
+   * Renderizar sección de archivo GPX/TCX
+   */
+  const renderFileSection = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>
+        📎 Importar desde Archivo GPS
+      </Text>
+      
+      {!selectedFile ? (
+        <TouchableOpacity 
+          style={styles.fileButton}
+          onPress={selectFile}
+          disabled={isEditing} // No permitir en edición
+        >
+          <Ionicons name="cloud-upload-outline" size={32} color={Colors.primary} />
+          <Text style={styles.fileButtonTitle}>Seleccionar archivo GPX/TCX/FIT</Text>
+          <Text style={styles.fileButtonSubtitle}>
+            Importa datos automáticamente desde tu dispositivo GPS o aplicaciones como Strava, Garmin Connect, etc.
+          </Text>
+          <View style={styles.supportedFormats}>
+            <Text style={styles.supportedFormatsText}>
+              Formatos compatibles: GPX, TCX, FIT
+            </Text>
+          </View>
+        </TouchableOpacity>
+      ) : (
+        <View style={[styles.fileInfo, fileProcessed && styles.fileInfoProcessed]}>
+          <View style={styles.fileInfoHeader}>
+            <Ionicons 
+              name={fileProcessed ? "checkmark-circle" : "document-outline"} 
+              size={24} 
+              color={fileProcessed ? Colors.success : Colors.primary} 
+            />
+            <View style={styles.fileInfoText}>
+              <Text style={styles.fileName}>{selectedFile.name}</Text>
+              <Text style={styles.fileSize}>
+                {extractedData?.file_info ? 
+                  `${extractedData.file_info.size_mb} ${extractedData.file_info.size_unit} • ${extractedData.file_info.type}` :
+                  `${(selectedFile.size / 1024).toFixed(1)} KB`
+                }
+              </Text>
+            </View>
+            <TouchableOpacity onPress={clearFile}>
+              <Ionicons name="close-circle" size={24} color={Colors.error} />
+            </TouchableOpacity>
+          </View>
+          
+          {processingFile && (
+            <View style={styles.processingContainer}>
+              <LoadingSpinner size="small" />
+              <Text style={styles.processingText}>Procesando archivo...</Text>
+            </View>
+          )}
+          
+          {fileProcessed && extractedData && (
+            <View style={styles.extractedInfo}>
+              <Text style={styles.extractedTitle}>✅ Datos extraídos automáticamente:</Text>
+              <Text style={styles.extractedText}>
+                • Distancia: {extractedData.extracted_data.distance ? 
+                  `${extractedData.extracted_data.distance.toFixed(2)} km` : 'N/A'}
+              </Text>
+              <Text style={styles.extractedText}>
+                • Duración: {extractedData.extracted_data.duration || 'N/A'}
+              </Text>
+              <Text style={styles.extractedText}>
+                • Velocidad promedio: {extractedData.extracted_data.avg_speed ? 
+                  `${extractedData.extracted_data.avg_speed.toFixed(1)} km/h` : 'N/A'}
+              </Text>
+              {extractedData.extracted_data.avg_heart_rate && (
+                <Text style={styles.extractedText}>
+                  • Ritmo cardíaco promedio: {Math.round(extractedData.extracted_data.avg_heart_rate)} bpm
+                </Text>
+              )}
+              {extractedData.extracted_data.elevation_gain && (
+                <Text style={styles.extractedText}>
+                  • Ganancia de elevación: {Math.round(extractedData.extracted_data.elevation_gain)} m
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+      
+      {isEditing && (
+        <View style={styles.editingNote}>
+          <Ionicons name="information-circle-outline" size={20} color={Colors.info} />
+          <Text style={styles.editingNoteText}>
+            La importación de archivos no está disponible al editar entrenamientos existentes.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
   
   /**
    * Renderizar selector de tipo de actividad
@@ -263,7 +579,7 @@ const TrainingScreen = ({ navigation, route }) => {
     <View style={globalStyles.container}>
       <BackHeader 
         title={isEditing ? 'Editar Entrenamiento' : 'Nuevo Entrenamiento'}
-        onBack={() => navigation.goBack()}
+        onBack={handleCancel}
       />
       
       <ScrollView 
@@ -271,6 +587,9 @@ const TrainingScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* Sección de archivo GPX/TCX */}
+        {!isEditing && renderFileSection()}
+        
         {/* Información básica */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Información Básica</Text>
@@ -389,8 +708,14 @@ const TrainingScreen = ({ navigation, route }) => {
                 error={errors.avgSpeed}
                 keyboardType="numeric"
                 icon="speedometer-outline"
-                editable={!formData.distance || !formData.duration} // Auto-calculado si hay distancia y duración
+                editable={!fileProcessed} // No editable si viene de archivo procesado
+                style={fileProcessed && styles.readOnlyInput}
               />
+              {fileProcessed && (
+                <Text style={styles.autoCalculatedText}>
+                  📊 Calculado automáticamente desde archivo
+                </Text>
+              )}
             </View>
             
             <View style={styles.halfWidth}>
@@ -455,14 +780,14 @@ const TrainingScreen = ({ navigation, route }) => {
             title={isEditing ? 'Actualizar Entrenamiento' : 'Crear Entrenamiento'}
             onPress={handleSubmit}
             loading={isLoading}
-            disabled={isLoading}
+            disabled={isLoading || processingFile}
           />
           
           <Button
             title="Cancelar"
             variant="outline"
-            onPress={() => navigation.goBack()}
-            disabled={isLoading}
+            onPress={handleCancel}
+            disabled={isLoading || processingFile}
             style={styles.cancelButton}
           />
         </View>
@@ -472,10 +797,10 @@ const TrainingScreen = ({ navigation, route }) => {
       {renderActivityPicker()}
       
       {/* Overlay de carga */}
-      {isLoading && (
+      {(isLoading || processingFile) && (
         <LoadingSpinner
           overlay={true}
-          text={isEditing ? 'Actualizando...' : 'Creando entrenamiento...'}
+          text={processingFile ? 'Procesando archivo...' : isEditing ? 'Actualizando...' : 'Creando entrenamiento...'}
         />
       )}
     </View>
@@ -540,6 +865,143 @@ const styles = StyleSheet.create({
   pickerValueText: {
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+  
+  // Estilos para archivos GPX/TCX
+  fileButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.primaryAlpha10,
+  },
+  
+  fileButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  
+  fileButtonSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  
+  supportedFormats: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: 16,
+  },
+  
+  supportedFormatsText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  
+  fileInfo: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: Colors.backgroundLight,
+  },
+  
+  fileInfoProcessed: {
+    borderColor: Colors.success,
+    backgroundColor: Colors.successAlpha10,
+  },
+  
+  fileInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
+  fileInfoText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  
+  fileName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.textPrimary,
+  },
+  
+  fileSize: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  
+  processingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  
+  processingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  
+  extractedInfo: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: Colors.successAlpha20,
+    borderRadius: 8,
+  },
+  
+  extractedTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.success,
+    marginBottom: 8,
+  },
+  
+  extractedText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  
+  editingNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: Colors.infoAlpha10,
+    borderRadius: 8,
+  },
+  
+  editingNoteText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.info,
+    marginLeft: 8,
+    lineHeight: 20,
+  },
+  
+  readOnlyInput: {
+    opacity: 0.7,
+    backgroundColor: Colors.backgroundLight,
+  },
+  
+  autoCalculatedText: {
+    fontSize: 12,
+    color: Colors.success,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   
   // Modal

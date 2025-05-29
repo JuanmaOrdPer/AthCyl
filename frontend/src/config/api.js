@@ -1,46 +1,50 @@
 /**
- * Configuración de la API para conectar con el backend Django - VERSIÓN CORREGIDA
+ * Configuración de la API para conectar con el backend Django - COMPLETO
  * 
  * Este archivo configura:
  * - La instancia de Axios para peticiones HTTP
  * - Interceptores para manejo automático de tokens JWT
+ * - Auto-renovación de tokens expirados
  * - Manejo de errores globales
  * - URLs base para diferentes endpoints
- * - Detección automática de conexión
+ * - Soporte completo para entrenamientos con archivos GPX/TCX
  */
 
 import axios from 'axios';
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ===== CONFIGURACIÓN BASE =====
-function getApiBaseUrl() {
-  // Para desarrollo local con emulador de Android
-  const isAndroidEmulator = Constants.appOwnership === 'expo' && 
-                         Constants.expoVersion && 
-                         Constants.deviceName && 
-                         Constants.deviceName.toLowerCase().includes('emulator');
+const getApiBaseUrl = () => {
+  return 'http://192.168.0.7:8000';
+
+  /*
+  // CONFIGURACIÓN PARA EMULADORES Y DISPOSITIVOS
   
-  // Usar 10.0.2.2 para el emulador de Android (apunta al localhost del host)
-  // o la IP local para dispositivos físicos
-  const baseUrl = isAndroidEmulator 
-    ? 'http://10.0.2.2:8000' 
-    : 'http://192.168.0.7:8000';
+  const ANDROID_EMULATOR_IP = 'http://10.0.2.2:8000';  // IP especial del emulador Android
+  const IOS_SIMULATOR_IP = 'http://localhost:8000';     // iOS puede usar localhost directamente
   
-  console.log('🔗 API Base URL configurada:', baseUrl);
-  console.log('Dispositivo:', Constants.deviceName);
-  console.log('Es emulador Android:', isAndroidEmulator);
+  const Platform = require('react-native').Platform;
   
-  return baseUrl;
-}
+  if (Platform.OS === 'android') {
+    return ANDROID_EMULATOR_IP;
+  } else if (Platform.OS === 'ios') {
+    return IOS_SIMULATOR_IP;
+  }
+  
+  // Por defecto para Android
+  return ANDROID_EMULATOR_IP;
+  */
+};
 
 const API_BASE_URL = getApiBaseUrl();
 
+console.log('🔗 API Base URL configurada:', API_BASE_URL);
+console.log('📱 Plataforma:', require('react-native').Platform.OS);
+
 // ===== INSTANCIA DE AXIOS =====
-// Crear instancia principal de Axios con configuración base
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000, // 15 segundos de timeout (aumentado)
+  timeout: 60000, // 60 segundos para archivos grandes
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -48,28 +52,21 @@ export const api = axios.create({
 });
 
 // ===== INTERCEPTORES DE PETICIONES =====
-// Interceptor para añadir token JWT automáticamente a las peticiones
 api.interceptors.request.use(
   async (config) => {
     try {
-      // Obtener token guardado en AsyncStorage
       const token = await AsyncStorage.getItem('userToken');
       
       if (token) {
-        // Añadir token JWT al header Authorization
-        config.headers.Authorization = `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${token}`;  // JWT Bearer token
       }
       
       console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`);
+      console.log('📡 Authorization:', config.headers.Authorization ? 'Bearer ***' : 'None');
       
-      // Log de debugging para desarrollo
-      if (__DEV__) {
-        console.log('📡 Request config:', {
-          url: config.url,
-          method: config.method,
-          baseURL: config.baseURL,
-          headers: config.headers,
-        });
+      // Log especial para archivos
+      if (config.headers['Content-Type'] === 'multipart/form-data') {
+        console.log('📎 Subiendo archivo...');
       }
       
       return config;
@@ -84,77 +81,76 @@ api.interceptors.request.use(
   }
 );
 
-// ===== INTERCEPTORES DE RESPUESTAS =====
-// Interceptor para manejo global de respuestas y errores
+// ===== INTERCEPTORES DE RESPUESTAS CON AUTO-REFRESH =====
 api.interceptors.response.use(
   (response) => {
-    // Log de respuestas exitosas en desarrollo
-    if (__DEV__) {
-      console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
+    console.log(`✅ ${response.status} ${response.config.url}`);
+    
+    // Log especial para archivos procesados
+    if (response.data?.file_processed) {
+      console.log('📄 Archivo procesado exitosamente');
     }
+    
     return response;
   },
   async (error) => {
-    const originalRequest = error.config;
-    
-    // Log detallado del error
-    console.error('❌ Error en respuesta API:', {
+    console.error('❌ Error respuesta:', {
       status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
+      message: error.message,
       url: error.config?.url,
-      method: error.config?.method,
     });
     
-    // Si el token ha expirado (401) y no hemos intentado renovarlo
+    const originalRequest = error.config;
+    
+    // Si es error 401 y no hemos intentado refresh ya
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
       try {
-        // Intentar renovar token con refresh token
+        // Intentar refrescar el token
         const refreshToken = await AsyncStorage.getItem('refreshToken');
         
         if (refreshToken) {
-          console.log('🔄 Intentando renovar token...');
+          console.log('🔄 Intentando refrescar token...');
           
-          const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
+          const refreshResponse = await axios.post(`${API_BASE_URL}/api/auth/refresh/`, {
             refresh: refreshToken
           });
           
-          const newToken = response.data.access;
-          await AsyncStorage.setItem('userToken', newToken);
+          const { access } = refreshResponse.data;
           
-          console.log('✅ Token renovado exitosamente');
-          
-          // Reintentar petición original con nuevo token
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return api(originalRequest);
+          if (access) {
+            // Guardar nuevo token
+            await AsyncStorage.setItem('userToken', access);
+            
+            // Reintentar la petición original con el nuevo token
+            originalRequest.headers.Authorization = `Bearer ${access}`;
+            return api(originalRequest);
+          }
         }
       } catch (refreshError) {
-        // Si falla la renovación, limpiar tokens y rediriger a login
-        console.error('❌ Error renovando token:', refreshError);
-        await AsyncStorage.multiRemove(['userToken', 'refreshToken', 'userData']);
-        console.log('🚪 Tokens limpiados, necesario login nuevamente');
+        console.error('❌ Error refrescando token:', refreshError);
+        
+        // Si falla el refresh, limpiar datos y redirigir al login
+        await AsyncStorage.multiRemove(['userToken', 'refreshToken', 'userData', 'isLoggedIn']);
+        
+        // Aquí podrías disparar un evento para redirigir al login
+        // Por ejemplo: NavigationService.navigate('Login');
       }
-    }
-    
-    // Manejo específico de errores de conexión
-    if (error.code === 'ECONNREFUSED' || error.code === 'NETWORK_ERROR') {
-      console.error('🔌 Error de conexión: Verifica que el servidor esté ejecutándose');
     }
     
     return Promise.reject(error);
   }
 );
 
-// ===== ENDPOINTS DE LA API =====
-// URLs organizadas por funcionalidad
+// ===== ENDPOINTS DE LA API COMPLETOS =====
 export const API_ENDPOINTS = {
-  // Autenticación
+  // Autenticación JWT
   auth: {
-    login: '/api/token/',
-    refresh: '/api/token/refresh/',
-    register: '/api/usuarios/register/',
+    login: '/api/auth/login/',
+    register: '/api/auth/register/',
+    logout: '/api/auth/logout/',
+    refresh: '/api/auth/refresh/',
   },
   
   // Usuarios
@@ -162,23 +158,19 @@ export const API_ENDPOINTS = {
     profile: '/api/usuarios/me/',
     updateProfile: '/api/usuarios/update_profile/',
     changePassword: '/api/usuarios/change_password/',
+    deleteAccount: '/api/usuarios/delete_account/',
   },
   
-  // Entrenamientos
+  // Entrenamientos - COMPLETO CON SOPORTE GPX/TCX
   trainings: {
     list: '/api/entrenamientos/trainings/',
     create: '/api/entrenamientos/trainings/',
     detail: (id) => `/api/entrenamientos/trainings/${id}/`,
     trackPoints: (id) => `/api/entrenamientos/trainings/${id}/track_points/`,
+    uploadAndProcess: '/api/entrenamientos/trainings/upload_and_process/',
+    createFromProcessed: '/api/entrenamientos/trainings/create_from_processed_data/',
     exportCsv: (id) => `/api/entrenamientos/trainings/${id}/export_csv/`,
     exportPdf: (id) => `/api/entrenamientos/trainings/${id}/export_pdf/`,
-  },
-  
-  // Estadísticas
-  stats: {
-    userStats: '/api/estadisticas/user-stats/',
-    summary: '/api/estadisticas/user-stats/resumen/',
-    trends: '/api/estadisticas/user-stats/tendencias/',
   },
   
   // Objetivos
@@ -188,6 +180,23 @@ export const API_ENDPOINTS = {
     detail: (id) => `/api/entrenamientos/goals/${id}/`,
     active: '/api/entrenamientos/goals/active/',
     completed: '/api/entrenamientos/goals/completed/',
+    markCompleted: (id) => `/api/entrenamientos/goals/${id}/mark_completed/`,
+  },
+  
+  // Estadísticas
+  stats: {
+    userStats: '/api/estadisticas/user-stats/',
+    summary: '/api/estadisticas/user-stats/resumen/',
+    tendencias: '/api/estadisticas/user-stats/tendencias/',
+    exportPdf: '/api/estadisticas/user-stats/exportar_pdf/',
+  },
+  
+  // Resúmenes de actividad
+  activitySummaries: {
+    list: '/api/estadisticas/activity-summaries/',
+    create: '/api/estadisticas/activity-summaries/',
+    detail: (id) => `/api/estadisticas/activity-summaries/${id}/`,
+    generate: '/api/estadisticas/activity-summaries/generar_resumenes/',
   }
 };
 
@@ -195,7 +204,6 @@ export const API_ENDPOINTS = {
 
 /**
  * Función para verificar conectividad con el servidor
- * @returns {Promise<boolean>} true si hay conectividad
  */
 export const checkConnectivity = async () => {
   try {
@@ -216,71 +224,87 @@ export const checkConnectivity = async () => {
 };
 
 /**
- * Función para hacer peticiones GET
- * @param {string} url - URL del endpoint
- * @param {object} params - Parámetros de consulta
+ * Función para probar conexiones específicas
  */
-export const get = async (url, params = {}) => {
-  const response = await api.get(url, { params });
-  return response.data;
+export const testConnection = async () => {
+  // Prueba solo las URLs relevantes
+  const urls = [
+    'http://10.0.2.2:8000',      // Android Emulator -> 127.0.0.1:8000
+    'http://localhost:8000',      // iOS Simulator
+    'http://192.168.0.7:8000',   // Red local
+  ];
+  
+  console.log('🔍 Probando conexiones con Django...');
+  
+  for (const url of urls) {
+    try {
+      console.log(`Probando: ${url}`);
+      const response = await axios.get(`${url}/admin/`, { timeout: 5000 });
+      
+      if (response.status < 400) {
+        console.log(`✅ FUNCIONA: ${url}`);
+        return url;
+      }
+    } catch (error) {
+      console.log(`❌ FALLA: ${url} - ${error.message}`);
+    }
+  }
+  
+  console.log('❌ Ninguna URL funciona. Asegúrate de que Django esté corriendo con: python manage.py runserver 0.0.0.0:8000');
+  return null;
 };
 
 /**
- * Función para hacer peticiones POST
+ * Función específica para subir archivos grandes
  * @param {string} url - URL del endpoint
- * @param {object} data - Datos a enviar
+ * @param {FormData} formData - Datos del formulario con archivo
+ * @param {function} onUploadProgress - Callback para progreso
+ * @returns {Promise} - Promesa con la respuesta
  */
-export const post = async (url, data = {}) => {
-  const response = await api.post(url, data);
-  return response.data;
+export const uploadLargeFile = async (url, formData, onUploadProgress = null) => {
+  try {
+    console.log('📤 Iniciando subida de archivo grande...');
+    
+    const config = {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 300000, // 5 minutos para archivos muy grandes
+    };
+    
+    if (onUploadProgress) {
+      config.onUploadProgress = (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        console.log(`📊 Progreso: ${percentCompleted}%`);
+        onUploadProgress(percentCompleted);
+      };
+    }
+    
+    const response = await api.post(url, formData, config);
+    
+    console.log('✅ Archivo subido exitosamente');
+    return response;
+    
+  } catch (error) {
+    console.error('❌ Error subiendo archivo:', error);
+    throw error;
+  }
 };
 
-/**
- * Función para hacer peticiones PUT
- * @param {string} url - URL del endpoint
- * @param {object} data - Datos a enviar
- */
-export const put = async (url, data = {}) => {
-  const response = await api.put(url, data);
-  return response.data;
-};
-
-/**
- * Función para hacer peticiones PATCH
- * @param {string} url - URL del endpoint
- * @param {object} data - Datos a enviar
- */
-export const patch = async (url, data = {}) => {
-  const response = await api.patch(url, data);
-  return response.data;
-};
-
-/**
- * Función para hacer peticiones DELETE
- * @param {string} url - URL del endpoint
- */
-export const del = async (url) => {
-  const response = await api.delete(url);
-  return response.data;
-};
-
-// ===== MANEJO DE ERRORES MEJORADO =====
 /**
  * Extrae mensaje de error legible desde la respuesta de la API
- * @param {object} error - Error de Axios
- * @returns {string} Mensaje de error legible
  */
 export const getErrorMessage = (error) => {
   // Error de red/conexión
   if (!error.response) {
     if (error.code === 'ECONNREFUSED') {
-      return 'No se puede conectar al servidor. Verifica que esté ejecutándose en ' + API_BASE_URL;
+      return `No se puede conectar al servidor en ${API_BASE_URL}. Verifica que Django esté ejecutándose.`;
     } else if (error.code === 'NETWORK_ERROR') {
-      return 'Error de red. Verifica tu conexión a internet.';
+      return 'Error de red. Verifica tu conexión.';
     } else if (error.code === 'ECONNABORTED') {
-      return 'La conexión tardó demasiado. Verifica tu conexión de red.';
+      return 'Timeout de conexión. El servidor tardó demasiado en responder.';
     }
-    return 'Error de conexión. Verifica que el servidor esté ejecutándose.';
+    return `Error de conexión con ${API_BASE_URL}`;
   }
   
   // Errores con respuesta del servidor
@@ -298,22 +322,39 @@ export const getErrorMessage = (error) => {
       return Array.isArray(firstError) ? firstError[0] : firstError;
     }
     
+    // Si hay detalles de errores de campos
+    if (data.details) {
+      const firstError = Object.values(data.details)[0];
+      return Array.isArray(firstError) ? firstError[0] : firstError;
+    }
+    
     // Errores de campos específicos
     const fieldErrors = Object.keys(data).filter(key => Array.isArray(data[key]));
     if (fieldErrors.length > 0) {
       return data[fieldErrors[0]][0];
+    }
+    
+    // Si hay un mensaje simple como string
+    if (typeof data === 'string') {
+      return data;
     }
   }
   
   // Mensajes por defecto según código de estado
   const status = error.response?.status;
   switch (status) {
+    case 400:
+      return 'Datos inválidos. Verifica la información enviada.';
     case 401:
       return 'Credenciales inválidas. Por favor, inicia sesión nuevamente.';
     case 403:
       return 'No tienes permisos para realizar esta acción.';
     case 404:
       return 'El recurso solicitado no fue encontrado.';
+    case 413:
+      return 'El archivo es demasiado grande. Máximo 50MB permitido.';
+    case 415:
+      return 'Formato de archivo no soportado. Solo se permiten archivos GPX, TCX y FIT.';
     case 500:
       return 'Error del servidor. Por favor, inténtalo más tarde.';
     default:

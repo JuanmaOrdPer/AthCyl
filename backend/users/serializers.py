@@ -1,5 +1,5 @@
 """
-Serializadores para el modelo de Usuario.
+Serializadores para el modelo de Usuario
 
 Este módulo define los serializadores necesarios para:
 - Gestión general de usuarios (creación, actualización, etc.)
@@ -11,36 +11,14 @@ Fecha: Mayo 2025
 """
 
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
 from .models import User
 
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """
-    Serializador personalizado para la autenticación JWT.
-    Permite la autenticación usando el campo 'email' en lugar de 'username'.
-    """
-    def validate(self, attrs):
-        # Cambiar 'username' por 'email' en los datos de validación
-        if 'username' in attrs:
-            attrs['email'] = attrs.pop('username')
-        return super().validate(attrs)
-
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        # Añadir campos personalizados al token si es necesario
-        token['email'] = user.email
-        return token
-
 class UserSerializer(serializers.ModelSerializer):
     """
     Serializador principal para el modelo de Usuario.
-    
-    Permite operaciones CRUD sobre usuarios, con manejo seguro
-    de contraseñas (solo escritura, nunca lectura).
     """
     
     password = serializers.CharField(
@@ -79,7 +57,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         """
-        Crea un nuevo usuario con contraseña cifrada usando el sistema de Django.
+        Crea un nuevo usuario con contraseña cifrada.
         """
         password = validated_data.pop('password', None)
         
@@ -96,13 +74,6 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """
         Actualiza un usuario existente.
-        
-        Args:
-            instance: Usuario a actualizar
-            validated_data: Nuevos datos validados
-            
-        Returns:
-            Usuario actualizado
         """
         password = validated_data.pop('password', None)
         
@@ -117,18 +88,18 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
-    Serializador para el registro de nuevos usuarios.
-    
-    Incluye validación de coincidencia de contraseñas y validaciones adicionales.
+    Serializador para el registro de nuevos usuarios - CORREGIDO.
     """
     
     password = serializers.CharField(
         write_only=True, 
         required=True, 
         style={'input_type': 'password'},
-        help_text="Mínimo 8 caracteres"
+        help_text="Mínimo 8 caracteres",
+        min_length=8
     )
     password_confirm = serializers.CharField(
         write_only=True, 
@@ -150,7 +121,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             },
             'username': {
                 'required': True,
-                'help_text': 'Nombre de usuario único'
+                'help_text': 'Nombre de usuario único',
+                'min_length': 3
             },
             'first_name': {
                 'required': False, 
@@ -168,6 +140,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """
         Valida que el email no esté ya en uso
         """
+        # Normalizar email
+        value = value.lower().strip()
+        
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError(
                 "Ya existe un usuario con este correo electrónico."
@@ -178,6 +153,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """
         Valida que el username no esté ya en uso
         """
+        # Normalizar username
+        value = value.strip()
+        
+        if len(value) < 3:
+            raise serializers.ValidationError(
+                "El nombre de usuario debe tener al menos 3 caracteres."
+            )
+            
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError(
                 "Ya existe un usuario con este nombre de usuario."
@@ -188,37 +171,57 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """
         Valida la contraseña usando los validadores de Django
         """
-        validate_password(value)
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "La contraseña debe tener al menos 8 caracteres."
+            )
+            
+        # Usar validadores de Django
+        try:
+            validate_password(value)
+        except Exception as e:
+            raise serializers.ValidationError(str(e))
+            
         return value
     
     def validate(self, attrs):
         """
         Valida que las contraseñas coincidan
         """
-        if attrs['password'] != attrs['password_confirm']:
+        password = attrs.get('password')
+        password_confirm = attrs.get('password_confirm')
+        
+        if password != password_confirm:
             raise serializers.ValidationError({
                 "password_confirm": "Las contraseñas no coinciden."
             })
+            
         return attrs
     
     def create(self, validated_data):
         """
         Crea un nuevo usuario a partir de los datos de registro
         """
-        # Eliminar la confirmación de contraseña
-        validated_data.pop('password_confirm')
-        
-        # Crear el usuario usando el manager de Django
-        user = User.objects.create_user(**validated_data)
-        
-        return user
+        try:
+            # Eliminar la confirmación de contraseña
+            validated_data.pop('password_confirm', None)
+            
+            # Normalizar datos
+            validated_data['email'] = validated_data['email'].lower().strip()
+            validated_data['username'] = validated_data['username'].strip()
+            
+            # Crear el usuario usando el manager de Django
+            user = User.objects.create_user(**validated_data)
+            
+            return user
+            
+        except Exception as e:
+            raise serializers.ValidationError(f"Error creando usuario: {str(e)}")
+
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializador para el perfil completo del usuario.
-    
-    Incluye todos los campos del usuario incluyendo los específicos
-    de la aplicación deportiva como altura y peso.
     """
     
     password = serializers.CharField(
@@ -291,12 +294,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class UserBasicSerializer(serializers.ModelSerializer):
     """
     Serializador básico para mostrar información pública del usuario.
-    
-    Usado para mostrar información de usuarios en listas o referencias
-    sin exponer datos sensibles.
     """
     
     class Meta:

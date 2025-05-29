@@ -107,36 +107,68 @@ const ProfileScreen = ({ user, onLogout }) => {
     
     return errors;
   };
-  
   /**
-   * Guardar cambios del perfil
-   */
-  const saveProfile = async () => {
-    const errors = validateProfile();
-    if (Object.keys(errors).length > 0) {
-      Alert.alert('Error de Validación', Object.values(errors)[0]);
-      return;
+ * Guardar cambios del perfil - VERSIÓN CORREGIDA
+ */
+const saveProfile = async () => {
+  const errors = validateProfile();
+  if (Object.keys(errors).length > 0) {
+    Alert.alert('Error de Validación', Object.values(errors)[0]);
+    return;
+  }
+  
+  setIsLoading(true);
+  
+  try {
+    // Preparar datos para enviar
+    const dataToUpdate = {
+      first_name: editedUser.first_name.trim(),
+      last_name: editedUser.last_name.trim(),
+      // email: editedUser.email, // No permitir cambiar email
+      // username: editedUser.username, // No permitir cambiar username
+    };
+    
+    // Solo incluir altura y peso si tienen valores válidos
+    if (editedUser.height && editedUser.height.trim() !== '') {
+      dataToUpdate.height = parseFloat(editedUser.height);
     }
     
-    setIsLoading(true);
+    if (editedUser.weight && editedUser.weight.trim() !== '') {
+      dataToUpdate.weight = parseFloat(editedUser.weight);
+    }
     
-    try {
-      // Aquí harías la llamada a la API para actualizar el perfil
-      // const result = await userService.updateProfile(editedUser);
-      
-      // Simulación de actualización exitosa
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+    console.log('🔄 Actualizando perfil con datos:', dataToUpdate);
+    
+    // LLAMADA REAL AL BACKEND
+    const result = await authService.updateProfile(dataToUpdate);
+    
+    if (result.success) {
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
       setIsEditing(false);
       
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar el perfil');
-    } finally {
-      setIsLoading(false);
+      // Actualizar datos locales con la respuesta del servidor
+      if (result.user) {
+        setEditedUser({
+          first_name: result.user.first_name || '',
+          last_name: result.user.last_name || '',
+          email: result.user.email || '',
+          username: result.user.username || '',
+          height: result.user.height?.toString() || '',
+          weight: result.user.weight?.toString() || ''
+        });
+      }
+    } else {
+      Alert.alert('Error', result.error || 'No se pudo actualizar el perfil');
     }
-  };
-  
+    
+  } catch (error) {
+    console.error('❌ Error actualizando perfil:', error);
+    Alert.alert('Error', 'No se pudo actualizar el perfil');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
   /**
    * Cancelar edición
    */
